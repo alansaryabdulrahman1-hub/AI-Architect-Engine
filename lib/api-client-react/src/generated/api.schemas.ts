@@ -64,6 +64,8 @@ export interface ArchitectureSession {
   groundLevelDifference?: number;
   additionalRequirements?: string;
   generatedPlan: string;
+  floorPlanImageUrl?: string | null;
+  exteriorImageUrl?: string | null;
   conversationId: number;
   createdAt: string;
 }

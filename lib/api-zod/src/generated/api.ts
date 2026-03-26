@@ -117,6 +117,8 @@ export const ListArchitectureSessionsResponseItem = zod.object({
   groundLevelDifference: zod.number().optional(),
   additionalRequirements: zod.string().optional(),
   generatedPlan: zod.string(),
+  floorPlanImageUrl: zod.string().nullish(),
+  exteriorImageUrl: zod.string().nullish(),
   conversationId: zod.number(),
   createdAt: zod.date(),
 });
@@ -206,6 +208,8 @@ export const GetArchitectureSessionResponse = zod.object({
   groundLevelDifference: zod.number().optional(),
   additionalRequirements: zod.string().optional(),
   generatedPlan: zod.string(),
+  floorPlanImageUrl: zod.string().nullish(),
+  exteriorImageUrl: zod.string().nullish(),
   conversationId: zod.number(),
   createdAt: zod.date(),
 });
@@ -214,6 +218,13 @@ export const GetArchitectureSessionResponse = zod.object({
  * @summary Delete an architecture session
  */
 export const DeleteArchitectureSessionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Download DXF file for an architecture session
+ */
+export const DownloadArchitectureDxfParams = zod.object({
   id: zod.coerce.number(),
 });
 

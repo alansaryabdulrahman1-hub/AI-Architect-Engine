@@ -59,6 +59,7 @@ All routes under `/api`:
 - `POST /api/architecture/sessions` — Create session + stream AI plan (SSE)
 - `GET /api/architecture/sessions/:id` — Get session
 - `DELETE /api/architecture/sessions/:id` — Delete session
+- `GET /api/architecture/sessions/:id/dxf` — Download DXF file for AutoCAD
 - `POST /api/architecture/sessions/:id/followup` — Follow-up question (SSE stream)
 - `GET /api/openai/conversations` — List conversations
 - `POST /api/openai/conversations` — Create conversation
@@ -89,7 +90,9 @@ React+Vite frontend with full RTL Arabic support. Dark professional theme inspir
 - Arabic validation errors, area overflow blocking, irregular plot alert
 - Image upload support (sketches, site photos, design references) — up to 5 images, converted to base64
 - Real-time streaming AI plan generation with vision-capable image analysis
-- Session view with the generated architectural plan + follow-up chat (textarea, Enter=send, Shift+Enter=newline) with image attachments
+- Session view with chat layout: AI plan at top, sticky input at bottom, follow-up messages in between
+- AI-generated image cards: 2D floor plan + 3D exterior view (DALL-E 3), with loading/error states
+- DXF download button for AutoCAD-compatible file export (parses coordinates from AI plan)
 - Code block copy buttons for AutoLISP scripts
 
 ### `artifacts/api-server` (`@workspace/api-server`)
@@ -102,7 +105,7 @@ Express 5 API server.
 
 ### `lib/db` (`@workspace/db`)
 
-Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`.
+Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`. Architecture sessions include `floor_plan_image_url` and `exterior_image_url` nullable columns for AI-generated images.
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 

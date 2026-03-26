@@ -215,6 +215,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
+  /architecture/sessions/{id}/dxf:
+    get:
+      operationId: downloadArchitectureDxf
+      tags: [architecture]
+      summary: Download DXF file for an architecture session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: DXF file download
+          content:
+            application/dxf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
   /architecture/sessions/{id}/followup:
     post:
       operationId: sendArchitectureFollowup
@@ -365,6 +390,12 @@ components:
           type: string
         generatedPlan:
           type: string
+        floorPlanImageUrl:
+          type: string
+          nullable: true
+        exteriorImageUrl:
+          type: string
+          nullable: true
         conversationId:
           type: integer
         createdAt:

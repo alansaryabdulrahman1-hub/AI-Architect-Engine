@@ -962,6 +962,95 @@ export const useDeleteArchitectureSession = <
 };
 
 /**
+ * @summary Download DXF file for an architecture session
+ */
+export const getDownloadArchitectureDxfUrl = (id: number) => {
+  return `/api/architecture/sessions/${id}/dxf`;
+};
+
+export const downloadArchitectureDxf = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getDownloadArchitectureDxfUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadArchitectureDxfQueryKey = (id: number) => {
+  return [`/api/architecture/sessions/${id}/dxf`] as const;
+};
+
+export const getDownloadArchitectureDxfQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadArchitectureDxf>>,
+  TError = ErrorType<OpenaiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadArchitectureDxf>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadArchitectureDxfQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadArchitectureDxf>>
+  > = ({ signal }) =>
+    downloadArchitectureDxf(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadArchitectureDxf>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadArchitectureDxfQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadArchitectureDxf>>
+>;
+export type DownloadArchitectureDxfQueryError = ErrorType<OpenaiError>;
+
+/**
+ * @summary Download DXF file for an architecture session
+ */
+
+export function useDownloadArchitectureDxf<
+  TData = Awaited<ReturnType<typeof downloadArchitectureDxf>>,
+  TError = ErrorType<OpenaiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadArchitectureDxf>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadArchitectureDxfQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Send a follow-up question about an architecture session
  */
 export const getSendArchitectureFollowupUrl = (id: number) => {

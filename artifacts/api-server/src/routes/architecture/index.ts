@@ -7,6 +7,7 @@ import {
   SendArchitectureFollowupBody,
 } from "@workspace/api-zod";
 import { eq } from "drizzle-orm";
+import Drawing from "dxf-writer";
 type ContentPart =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string; detail?: "auto" | "low" | "high" } };
@@ -440,6 +441,20 @@ router.post("/sessions", async (req, res) => {
       .returning();
 
     res.write(`data: ${JSON.stringify({ done: true, sessionId: session.id })}\n\n`);
+
+    generateSessionImages(session.id, {
+      area: body.area,
+      buildingSubtype: body.buildingSubtype,
+      buildingType: body.buildingType,
+      facadeDirection: body.facadeDirection,
+      sideNorth: body.sideNorth,
+      sideSouth: body.sideSouth,
+      sideEast: body.sideEast,
+      sideWest: body.sideWest,
+    }, fullPlan).catch((err) => {
+      console.error("Background image generation failed:", err);
+    });
+
     res.end();
   } catch (err) {
     req.log.error({ err }, "Failed to create architecture session");
@@ -496,6 +511,270 @@ router.delete("/sessions/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to delete architecture session");
     res.status(500).json({ error: "Failed to delete session" });
+  }
+});
+
+interface CoordinateRow {
+  element: string;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  length: number;
+  width: number;
+  notes: string;
+}
+
+function parseCoordinatesTable(planText: string): CoordinateRow[] {
+  const rows: CoordinateRow[] = [];
+  const lines = planText.split("\n");
+
+  let inSection8 = false;
+  let headerFound = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (/#{1,3}\s.*(?:8|٨).*(?:إحداثيات|Coordinates|أبعاد)/i.test(trimmed)) {
+      inSection8 = true;
+      headerFound = false;
+      continue;
+    }
+
+    if (inSection8 && /#{1,3}\s.*(?:9|٩|10|١٠)/.test(trimmed)) {
+      break;
+    }
+
+    if (!inSection8) continue;
+
+    if (trimmed.startsWith("|") && (trimmed.includes("---") || trimmed.includes(":-"))) {
+      headerFound = true;
+      continue;
+    }
+
+    if (trimmed.startsWith("|") && trimmed.includes("العنصر")) {
+      headerFound = false;
+      continue;
+    }
+
+    if (!headerFound) continue;
+
+    if (trimmed.startsWith("|")) {
+      const cells = trimmed
+        .split("|")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+
+      if (cells.length >= 5) {
+        const parseCoord = (s: string): [number, number] => {
+          const nums = s.replace(/[()（）]/g, "").split(/[,،\s]+/).map(Number);
+          return [nums[0] || 0, nums[1] || 0];
+        };
+
+        const [sx, sy] = parseCoord(cells[1] || "0,0");
+        const [ex, ey] = parseCoord(cells[2] || "0,0");
+        const len = parseFloat(cells[3]) || 0;
+        const w = parseFloat(cells[4]) || 0;
+
+        rows.push({
+          element: cells[0],
+          startX: sx,
+          startY: sy,
+          endX: ex,
+          endY: ey,
+          length: len,
+          width: w,
+          notes: cells[5] || "",
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
+function getLayerForElement(element: string): string {
+  const lower = element.toLowerCase();
+  const arabic = element;
+  if (lower.includes("door") || arabic.includes("باب")) return "DOORS";
+  if (lower.includes("window") || arabic.includes("نافذة") || arabic.includes("شباك")) return "WINDOWS";
+  if (lower.includes("stair") || arabic.includes("درج") || arabic.includes("سلم")) return "STAIRS";
+  return "WALLS";
+}
+
+function generateDxf(rows: CoordinateRow[]): string {
+  const d = new Drawing();
+  d.setUnits("Meters");
+
+  d.addLayer("WALLS", Drawing.ACI.WHITE, "CONTINUOUS");
+  d.addLayer("WALLS-INT", Drawing.ACI.YELLOW, "CONTINUOUS");
+  d.addLayer("DOORS", Drawing.ACI.RED, "CONTINUOUS");
+  d.addLayer("WINDOWS", Drawing.ACI.CYAN, "CONTINUOUS");
+  d.addLayer("STAIRS", Drawing.ACI.GREEN, "CONTINUOUS");
+  d.addLayer("TEXT", Drawing.ACI.WHITE, "CONTINUOUS");
+
+  for (const row of rows) {
+    const layer = getLayerForElement(row.element);
+    d.setActiveLayer(layer);
+
+    if (row.startX === row.endX && row.startY === row.endY && row.length === 0) {
+      continue;
+    }
+
+    d.drawLine(row.startX, row.startY, row.endX, row.endY);
+
+    if (row.width > 0) {
+      const dx = row.endX - row.startX;
+      const dy = row.endY - row.startY;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len > 0) {
+        const nx = -dy / len * row.width;
+        const ny = dx / len * row.width;
+        d.drawLine(row.startX + nx, row.startY + ny, row.endX + nx, row.endY + ny);
+        d.drawLine(row.startX, row.startY, row.startX + nx, row.startY + ny);
+        d.drawLine(row.endX, row.endY, row.endX + nx, row.endY + ny);
+      }
+    }
+  }
+
+  d.setActiveLayer("TEXT");
+  const labeled = new Set<string>();
+  for (const row of rows) {
+    if (!labeled.has(row.element)) {
+      const cx = (row.startX + row.endX) / 2;
+      const cy = (row.startY + row.endY) / 2;
+      d.drawText(cx, cy - 0.3, 0.25, 0, row.element);
+      labeled.add(row.element);
+    }
+  }
+
+  return d.toDxfString();
+}
+
+function extractRoomSummary(planText: string): string {
+  const roomPatterns = /(?:غرف?\s*(?:نوم|معيشة|جلوس)|صالة|مطبخ|حمام|مجلس|مدخل|درج|مصعد|كراج|مخزن)/g;
+  const matches = planText.match(roomPatterns);
+  if (matches && matches.length > 0) {
+    const unique = [...new Set(matches)].slice(0, 8);
+    return unique.join(", ");
+  }
+  return "";
+}
+
+async function generateSessionImages(
+  sessionId: number,
+  session: {
+    area: number;
+    buildingSubtype: string;
+    buildingType: string;
+    facadeDirection: string;
+    sideNorth: number;
+    sideSouth: number;
+    sideEast: number;
+    sideWest: number;
+  },
+  planText: string,
+) {
+  const facadeLabel = FACADE_DIRECTION_LABELS[session.facadeDirection] || session.facadeDirection;
+  const typeLabel = BUILDING_TYPE_LABELS[session.buildingType] || session.buildingType;
+
+  const avgWidth = ((session.sideNorth || 0) + (session.sideSouth || 0)) / 2;
+  const avgDepth = ((session.sideEast || 0) + (session.sideWest || 0)) / 2;
+
+  const coordinates = parseCoordinatesTable(planText);
+  const wallCount = coordinates.filter(r => getLayerForElement(r.element) === "WALLS").length;
+  const doorCount = coordinates.filter(r => getLayerForElement(r.element) === "DOORS").length;
+  const windowCount = coordinates.filter(r => getLayerForElement(r.element) === "WINDOWS").length;
+  const roomSummary = extractRoomSummary(planText);
+
+  const coordsDetail = coordinates.length > 0
+    ? ` The plan has ${wallCount} wall segments, ${doorCount} doors, and ${windowCount} windows.`
+    : "";
+  const roomDetail = roomSummary ? ` Rooms include: ${roomSummary}.` : "";
+
+  try {
+    const [floorPlanResult, exteriorResult] = await Promise.allSettled([
+      openai.images.generate({
+        model: "dall-e-3",
+        prompt: `Professional 2D architectural floor plan, top-down view, clean blueprint style with white lines on dark blue background. Building type: ${typeLabel} - ${session.buildingSubtype}. Plot dimensions: ${avgWidth.toFixed(1)}m x ${avgDepth.toFixed(1)}m, total area ${session.area}m².${coordsDetail}${roomDetail} Show room layouts, walls, doors, windows, and room labels. Minimalist technical drawing style.`,
+        n: 1,
+        size: "1024x1024",
+        quality: "standard",
+      }),
+      openai.images.generate({
+        model: "dall-e-3",
+        prompt: `Professional 3D exterior architectural rendering of a modern ${typeLabel} - ${session.buildingSubtype}. Facade facing ${facadeLabel}. Building footprint ${avgWidth.toFixed(1)}m x ${avgDepth.toFixed(1)}m.${doorCount > 0 ? ` Main entrance with ${doorCount} door openings visible.` : ""}${windowCount > 0 ? ` ${windowCount} windows on the facade.` : ""} Contemporary Middle Eastern architectural style with clean geometric forms, natural stone and white plaster finish. Landscape with desert-adapted plants. Golden hour lighting. Photorealistic rendering.`,
+        n: 1,
+        size: "1024x1024",
+        quality: "standard",
+      }),
+    ]);
+
+    const floorPlanUrl = floorPlanResult.status === "fulfilled" ? floorPlanResult.value.data[0]?.url ?? null : null;
+    const exteriorUrl = exteriorResult.status === "fulfilled" ? exteriorResult.value.data[0]?.url ?? null : null;
+
+    if (floorPlanUrl || exteriorUrl) {
+      await db
+        .update(architectureSessions)
+        .set({
+          floorPlanImageUrl: floorPlanUrl,
+          exteriorImageUrl: exteriorUrl,
+        })
+        .where(eq(architectureSessions.id, sessionId));
+    }
+
+    return { floorPlanUrl, exteriorUrl };
+  } catch (err) {
+    console.error("Image generation error:", err);
+    return { floorPlanUrl: null, exteriorUrl: null };
+  }
+}
+
+router.get("/sessions/:id/dxf", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [session] = await db
+      .select()
+      .from(architectureSessions)
+      .where(eq(architectureSessions.id, id));
+
+    if (!session) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
+    const rows = parseCoordinatesTable(session.generatedPlan);
+
+    if (rows.length === 0) {
+      const d = new Drawing();
+      d.setUnits("Meters");
+      d.addLayer("WALLS", Drawing.ACI.WHITE, "CONTINUOUS");
+      d.setActiveLayer("WALLS");
+
+      const w = ((session.sideNorth || 0) + (session.sideSouth || 0)) / 2 || 20;
+      const h = ((session.sideEast || 0) + (session.sideWest || 0)) / 2 || 15;
+
+      d.drawLine(0, 0, w, 0);
+      d.drawLine(w, 0, w, h);
+      d.drawLine(w, h, 0, h);
+      d.drawLine(0, h, 0, 0);
+
+      d.drawText(w / 2, h / 2, 0.5, 0, session.buildingSubtype || "Building");
+
+      const dxfContent = d.toDxfString();
+      res.setHeader("Content-Type", "application/dxf");
+      res.setHeader("Content-Disposition", `attachment; filename="plan-${id}.dxf"`);
+      res.send(dxfContent);
+      return;
+    }
+
+    const dxfContent = generateDxf(rows);
+    res.setHeader("Content-Type", "application/dxf");
+    res.setHeader("Content-Disposition", `attachment; filename="plan-${id}.dxf"`);
+    res.send(dxfContent);
+  } catch (err) {
+    req.log.error({ err }, "Failed to generate DXF");
+    res.status(500).json({ error: "Failed to generate DXF file" });
   }
 });
 
