@@ -5,6 +5,7 @@ import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, Sp
 import { useGenerateArchitecturePlan } from "@/hooks/use-architecture-stream";
 import { type CreateArchitectureSessionBody, type CreateArchitectureSessionBodyBuildingType, CreateArchitectureSessionBodyBuildingType as BuildingTypeEnum } from "@workspace/api-client-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const BUILDING_TYPES: Array<{ id: CreateArchitectureSessionBodyBuildingType; name: string; icon: React.ElementType; color: string }> = [
   { id: BuildingTypeEnum.villa, name: "فيلا سكنية", icon: HomeIcon, color: "from-teal-400 to-teal-600" },
@@ -27,6 +28,7 @@ export default function Home() {
     additionalRequirements: ""
   });
 
+  const [images, setImages] = useState<string[]>([]);
   const [step, setStep] = useState<"form" | "generating">("form");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +36,14 @@ export default function Home() {
     setStep("generating");
     
     try {
-      const { sessionId } = await generate(formData);
+      const payload: CreateArchitectureSessionBody = {
+        ...formData,
+      };
+      if (images.length > 0) {
+        payload.images = images;
+      }
+
+      const { sessionId } = await generate(payload);
       
       if (sessionId != null) {
         setLocation(`/sessions/${sessionId}`);
@@ -65,13 +74,12 @@ export default function Home() {
                 ماذا تريد أن تبني <span className="text-gradient">اليوم؟</span>
               </h2>
               <p className="text-lg text-zinc-400 max-w-xl mx-auto">
-                أدخل تفاصيل مشروعك وسيقوم الذكاء الاصطناعي بتوليد مخطط معماري تفصيلي مدروس مخصص لاحتياجاتك.
+                أدخل تفاصيل مشروعك وسيقوم الذكاء الاصطناعي بتوليد مخطط معماري تفصيلي مع أبعاد دقيقة وسكربت AutoLISP جاهز.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="glass-panel rounded-3xl p-6 md:p-8 space-y-8">
               
-              {/* Type Selection */}
               <div>
                 <label className="block text-sm font-semibold text-zinc-300 mb-4">نوع المبنى</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -147,6 +155,12 @@ export default function Home() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-zinc-300 mb-3">صور مرجعية (اختياري)</label>
+                <p className="text-xs text-zinc-500 mb-3">أرفق رسومات يدوية، صور الموقع، أو مراجع تصميمية — سيحللها الذكاء الاصطناعي ويأخذها في الاعتبار</p>
+                <ImageUpload images={images} onImagesChange={setImages} maxImages={5} />
+              </div>
+
               <div className="pt-4">
                 <button 
                   type="submit"
@@ -173,7 +187,7 @@ export default function Home() {
               </div>
               <div>
                 <h3 className="text-xl font-bold text-white">جاري إعداد المخطط...</h3>
-                <p className="text-zinc-400 text-sm">يقوم الذكاء الاصطناعي بتوزيع المساحات وتحليل المتطلبات</p>
+                <p className="text-zinc-400 text-sm">يقوم الذكاء الاصطناعي بتوزيع المساحات وتحليل المتطلبات وإعداد سكربت AutoCAD</p>
               </div>
             </div>
 

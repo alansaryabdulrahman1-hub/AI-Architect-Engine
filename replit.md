@@ -82,8 +82,10 @@ React+Vite frontend with full RTL Arabic support. Dark professional theme inspir
 
 - Sidebar with session history
 - Form for building type, subtype, area, floors, and extra requirements
-- Real-time streaming AI plan generation
-- Session view with the generated architectural plan + follow-up chat
+- Image upload support (sketches, site photos, design references) — up to 5 images, converted to base64
+- Real-time streaming AI plan generation with vision-capable image analysis
+- Session view with the generated architectural plan + follow-up chat with image attachments
+- Code block copy buttons for AutoLISP scripts
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 

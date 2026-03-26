@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { useGetArchitectureSession, useListOpenaiMessages } from "@workspace/api-client-react";
 import { useArchitectureFollowup } from "@/hooks/use-architecture-stream";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { ImageUpload } from "@/components/ImageUpload";
 import { Send, User, Bot, Loader2, FileText, Building, FileBox, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
@@ -19,6 +20,7 @@ export default function Session() {
   const { askFollowup, isAnswering, answerStream } = useArchitectureFollowup();
   
   const [question, setQuestion] = useState("");
+  const [followupImages, setFollowupImages] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,12 +29,14 @@ export default function Session() {
 
   const handleFollowup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!question.trim() || isAnswering) return;
+    if ((!question.trim() && followupImages.length === 0) || isAnswering) return;
     
     const currentQ = question;
+    const currentImages = [...followupImages];
     setQuestion("");
+    setFollowupImages([]);
     
-    await askFollowup(sessionId, currentQ, () => {
+    await askFollowup(sessionId, currentQ, currentImages.length > 0 ? currentImages : undefined, () => {
       refetchMessages();
     });
   };
@@ -53,13 +57,10 @@ export default function Session() {
     );
   }
 
-  // Filter out system messages and the initial prompt if they exist in the DB, 
-  // or just show user/assistant messages
   const visibleMessages = dbMessages?.filter(m => m.role === 'user' || m.role === 'assistant') || [];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Session Header */}
       <div className="shrink-0 glass-panel border-x-0 border-t-0 px-6 py-4 flex flex-wrap items-center gap-6 shadow-md z-20">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center">
@@ -87,11 +88,9 @@ export default function Session() {
         </div>
       </div>
 
-      {/* Main Scrollable Area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin">
         <div className="max-w-4xl mx-auto space-y-8 pb-32">
           
-          {/* Main Plan Document */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -104,8 +103,7 @@ export default function Session() {
             <MarkdownRenderer content={session.generatedPlan} />
           </motion.div>
 
-          {/* Follow-up Chat History */}
-          {visibleMessages.length > 1 && ( // > 1 assuming first message is the hidden system/prompt
+          {visibleMessages.length > 1 && (
             <div className="space-y-6 mt-12">
               <div className="flex items-center gap-3 mb-4">
                 <MessageSquare className="w-5 h-5 text-indigo-400" />
@@ -113,9 +111,7 @@ export default function Session() {
               </div>
               
               {visibleMessages.map((msg, idx) => {
-                // Skip the giant initial prompt if it's the first user message
                 if (idx === 0 && msg.role === 'user' && msg.content.includes(session.buildingType)) return null;
-                // Skip the first assistant message if it's identical to the generated plan
                 if (idx === 1 && msg.role === 'assistant' && msg.content === session.generatedPlan) return null;
 
                 const isUser = msg.role === "user";
@@ -146,7 +142,6 @@ export default function Session() {
             </div>
           )}
 
-          {/* Streaming Answer */}
           {isAnswering && answerStream && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
@@ -172,25 +167,27 @@ export default function Session() {
         </div>
       </div>
 
-      {/* Sticky Input Area */}
       <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[#09090b] via-[#09090b]/90 to-transparent z-30">
-        <div className="max-w-4xl mx-auto relative">
-          <form onSubmit={handleFollowup} className="relative flex items-center">
-            <input
-              type="text"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="اسأل سؤالاً أو اطلب تعديلاً على المخطط..."
-              disabled={isAnswering}
-              className="w-full bg-zinc-900 border border-zinc-700/80 rounded-2xl pl-16 pr-6 py-4 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 shadow-xl transition-all disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={!question.trim() || isAnswering}
-              className="absolute left-3 p-2 bg-teal-500 hover:bg-teal-400 text-white rounded-xl transition-colors disabled:opacity-50 disabled:hover:bg-teal-500"
-            >
-              {isAnswering ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rtl:-scale-x-100" />}
-            </button>
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleFollowup} className="relative flex items-center gap-2">
+            <ImageUpload images={followupImages} onImagesChange={setFollowupImages} maxImages={3} compact />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="اسأل سؤالاً، اطلب تعديلاً، أو أرفق صورة مرجعية..."
+                disabled={isAnswering}
+                className="w-full bg-zinc-900 border border-zinc-700/80 rounded-2xl pl-16 pr-6 py-4 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 shadow-xl transition-all disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={(!question.trim() && followupImages.length === 0) || isAnswering}
+                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-teal-500 hover:bg-teal-400 text-white rounded-xl transition-colors disabled:opacity-50 disabled:hover:bg-teal-500"
+              >
+                {isAnswering ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rtl:-scale-x-100" />}
+              </button>
+            </div>
           </form>
         </div>
       </div>

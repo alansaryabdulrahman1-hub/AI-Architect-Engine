@@ -72,8 +72,12 @@ export interface CreateArchitectureSessionBody {
   area: number;
   floors: number;
   additionalRequirements?: string;
+  /** Array of base64-encoded image data URLs for sketches, site photos, or design references */
+  images?: string[];
 }
 
 export interface ArchitectureFollowupBody {
   question: string;
+  /** Array of base64-encoded image data URLs attached to the follow-up question */
+  images?: string[];
 }

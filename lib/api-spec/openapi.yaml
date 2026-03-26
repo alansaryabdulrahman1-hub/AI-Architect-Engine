@@ -365,6 +365,11 @@ components:
           type: integer
         additionalRequirements:
           type: string
+        images:
+          type: array
+          items:
+            type: string
+          description: Array of base64-encoded image data URLs for sketches, site photos, or design references
       required:
         - buildingType
         - buildingSubtype
@@ -375,5 +380,10 @@ components:
       properties:
         question:
           type: string
+        images:
+          type: array
+          items:
+            type: string
+          description: Array of base64-encoded image data URLs attached to the follow-up question
       required:
         - question

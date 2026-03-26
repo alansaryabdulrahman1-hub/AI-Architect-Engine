@@ -7,6 +7,9 @@ import {
   SendArchitectureFollowupBody,
 } from "@workspace/api-zod";
 import { eq } from "drizzle-orm";
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail?: "auto" | "low" | "high" } };
 
 const router: IRouter = Router();
 
@@ -25,24 +28,35 @@ function buildArchitecturePrompt(
   area: number,
   floors: number,
   additionalRequirements?: string | null,
+  hasImages?: boolean,
 ): string {
   const typeLabel = BUILDING_TYPE_LABELS[buildingType] || buildingType;
   const reqText = additionalRequirements
     ? `\n- متطلبات إضافية: ${additionalRequirements}`
     : "";
 
-  return `أنت مهندس معماري محترف ومتخصص في تصميم المخططات المعمارية. المستخدم يريد مخططاً معمارياً مفصلاً للمشروع التالي:
+  const imageAnalysisSection = hasImages
+    ? `\n\n**تحليل الصور المرفقة:**
+قم أولاً بتحليل الصور المرفقة بعناية. حدد:
+- الأبعاد المكانية والمقاسات المرئية
+- العناصر الإنشائية (جدران، أعمدة، فتحات)
+- الطراز المعماري والتصميمي
+- أي ملاحظات أو قيود من الموقع أو التصميم المرجعي
+ثم استخدم هذا التحليل لإثراء المخطط المعماري المولّد.`
+    : "";
+
+  return `أنت مهندس معماري محترف ومتخصص في تصميم المخططات المعمارية وإعداد ملفات AutoCAD. المستخدم يريد مخططاً معمارياً مفصلاً للمشروع التالي:
 
 **تفاصيل المشروع:**
 - نوع المبنى: ${typeLabel}
 - الصنف/التخصص: ${buildingSubtype}
 - المساحة الإجمالية: ${area} متر مربع
-- عدد الأدوار: ${floors} دور${reqText}
+- عدد الأدوار: ${floors} دور${reqText}${imageAnalysisSection}
 
 **المطلوب منك:**
-قم بتوليد مخطط معماري مفصل وشامل يتضمن:
+قم بتوليد مخطط معماري مفصل وشامل يتضمن الأقسام التالية:
 
-1. **الملخص التنفيذي** - وصف موجز للمشروع وفكرته العامة
+1. **الملخص التنفيذي** - وصف موجز للمشروع وفكرته العامة والطراز المعماري المقترح
 
 2. **توزيع الفراغات والغرف** - قائمة تفصيلية لكل غرفة/فراغ في كل دور مع المساحة التقريبية المقترحة بالمتر المربع
 
@@ -55,11 +69,50 @@ function buildArchitecturePrompt(
 
 5. **المقترحات المعمارية** - اقتراحات لتحسين التصميم، الإضاءة الطبيعية، التهوية، الخصوصية
 
-6. **الجداول المساحية** - جدول ملخص بجميع الفراغات ومساحاتها
+6. **الجداول المساحية** - جدول ملخص بجميع الفراغات ومساحاتها (بصيغة جدول Markdown)
 
 7. **ملاحظات إضافية** - أي توصيات أو اعتبارات خاصة بهذا النوع من المباني
 
+8. **الأبعاد والإحداثيات الدقيقة (Precise Dimensions & Coordinates)**
+   قدم جدولاً تفصيلياً يتضمن:
+   | العنصر | نقطة البداية (X, Y) | نقطة النهاية (X, Y) | الطول (م) | العرض (م) | الملاحظات |
+   قم بتحديد إحداثيات كل جدار وفتحة ونافذة وباب بدقة، مع اعتبار النقطة (0,0) في الزاوية السفلية اليسرى من المبنى. استخدم وحدة المتر.
+
+9. **استراتيجية طبقات AutoCAD (CAD Layering Strategy)**
+   قدم جدول طبقات مقترح للرسم:
+   | اسم الطبقة (Layer Name) | اللون | نوع الخط | الوصف |
+   مثال: WALLS, WALLS-INT, DOORS, WINDOWS, FURNITURE, DIMS, TEXT, STAIRS, PLUMBING, ELECTRICAL
+
+10. **سكربت AutoLISP**
+    اكتب سكربت AutoLISP نظيف وجاهز للنسخ واللصق مباشرة في سطر أوامر AutoCAD.
+    السكربت يجب أن:
+    - ينشئ الطبقات المحددة أعلاه بألوانها
+    - يرسم الهندسة الأساسية (الجدران الخارجية والداخلية) باستخدام أوامر LINE و PLINE
+    - يرسم فتحات الأبواب والنوافذ
+    - يضيف نصوص أسماء الغرف
+    - يستخدم الإحداثيات الدقيقة من القسم 8
+    ضع السكربت داخل code block بصيغة \`\`\`lisp
+
 أجب باللغة التي استخدمها المستخدم في طلبه. اجعل الإجابة منظمة ومفصلة ومفيدة عملياً.`;
+}
+
+const MAX_IMAGES = 5;
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
+
+function validateImages(imageUrls: string[]): string | null {
+  if (imageUrls.length > MAX_IMAGES) return `Maximum ${MAX_IMAGES} images allowed`;
+  for (const url of imageUrls) {
+    if (!url.startsWith("data:image/")) return "Each image must be a data:image/ URL";
+    if (url.length > MAX_IMAGE_SIZE * 1.37) return "Image exceeds maximum size";
+  }
+  return null;
+}
+
+function buildImageContentParts(imageDataUrls: string[]): ContentPart[] {
+  return imageDataUrls.map((url) => ({
+    type: "image_url" as const,
+    image_url: { url, detail: "high" as const },
+  }));
 }
 
 router.get("/sessions", async (req, res) => {
@@ -102,18 +155,45 @@ router.post("/sessions", async (req, res) => {
       .values({ title: conversationTitle })
       .returning();
 
+    const imageUrls = body.images ?? [];
+    const hasImages = imageUrls.length > 0;
+
+    if (hasImages) {
+      const imgError = validateImages(imageUrls);
+      if (imgError) {
+        res.status(400).json({ error: imgError });
+        return;
+      }
+    }
+
     const systemPrompt = buildArchitecturePrompt(
       body.buildingType,
       body.buildingSubtype,
       body.area,
       body.floors,
       body.additionalRequirements,
+      hasImages,
     );
 
     await db.insert(messages).values({
       conversationId: conversation.id,
       role: "system",
       content: systemPrompt,
+    });
+
+    const userRequestText = `أريد تصميم ${body.buildingSubtype} (${BUILDING_TYPE_LABELS[body.buildingType] || body.buildingType}) بمساحة ${body.area} م² وعدد ${body.floors} أدوار.${body.additionalRequirements ? ` متطلبات إضافية: ${body.additionalRequirements}` : ""}${hasImages ? " أرفقت صوراً مرجعية للتحليل." : ""}`;
+
+    const userContent: ContentPart[] = [
+      { type: "text", text: userRequestText },
+    ];
+    if (hasImages) {
+      userContent.push(...buildImageContentParts(imageUrls));
+    }
+
+    await db.insert(messages).values({
+      conversationId: conversation.id,
+      role: "user",
+      content: userRequestText,
     });
 
     res.setHeader("Content-Type", "text/event-stream");
@@ -125,8 +205,11 @@ router.post("/sessions", async (req, res) => {
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 8192,
-      messages: [{ role: "user", content: systemPrompt }],
+      max_completion_tokens: 16384,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
       stream: true,
     });
 
@@ -239,6 +322,15 @@ router.post("/sessions/:id/followup", async (req, res) => {
       return;
     }
 
+    const imageUrls = body.images ?? [];
+    if (imageUrls.length > 0) {
+      const imgError = validateImages(imageUrls);
+      if (imgError) {
+        res.status(400).json({ error: imgError });
+        return;
+      }
+    }
+
     const history = await db
       .select()
       .from(messages)
@@ -255,7 +347,16 @@ router.post("/sessions/:id/followup", async (req, res) => {
       role: m.role as "system" | "user" | "assistant",
       content: m.content,
     }));
-    chatMessages.push({ role: "user", content: body.question });
+
+    if (imageUrls.length > 0) {
+      const userContent: ContentPart[] = [
+        { type: "text", text: body.question },
+        ...buildImageContentParts(imageUrls),
+      ];
+      chatMessages.push({ role: "user", content: userContent as unknown as string });
+    } else {
+      chatMessages.push({ role: "user", content: body.question });
+    }
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -266,8 +367,8 @@ router.post("/sessions/:id/followup", async (req, res) => {
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 8192,
-      messages: chatMessages,
+      max_completion_tokens: 16384,
+      messages: chatMessages as Parameters<typeof openai.chat.completions.create>[0]["messages"],
       stream: true,
     });
 

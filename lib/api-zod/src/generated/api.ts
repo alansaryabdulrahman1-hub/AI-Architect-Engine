@@ -126,6 +126,12 @@ export const CreateArchitectureSessionBody = zod.object({
   area: zod.number(),
   floors: zod.number(),
   additionalRequirements: zod.string().optional(),
+  images: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Array of base64-encoded image data URLs for sketches, site photos, or design references",
+    ),
 });
 
 /**
@@ -163,4 +169,10 @@ export const SendArchitectureFollowupParams = zod.object({
 
 export const SendArchitectureFollowupBody = zod.object({
   question: zod.string(),
+  images: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Array of base64-encoded image data URLs attached to the follow-up question",
+    ),
 });

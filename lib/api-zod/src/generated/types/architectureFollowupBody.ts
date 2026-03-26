@@ -8,4 +8,6 @@
 
 export interface ArchitectureFollowupBody {
   question: string;
+  /** Array of base64-encoded image data URLs attached to the follow-up question */
+  images?: string[];
 }

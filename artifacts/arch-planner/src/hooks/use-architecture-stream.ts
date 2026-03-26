@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListArchitectureSessionsQueryKey, type CreateArchitectureSessionBody } from "@workspace/api-client-react";
 
-// Hook for creating a session and streaming the plan
 export function useGenerateArchitecturePlan() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [content, setContent] = useState("");
@@ -36,7 +35,7 @@ export function useGenerateArchitecturePlan() {
         
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // Keep the incomplete line in the buffer
+        buffer = lines.pop() || "";
         
         for (const line of lines) {
           if (line.startsWith("data: ")) {
@@ -66,7 +65,6 @@ export function useGenerateArchitecturePlan() {
         }
       }
       
-      // Invalidate the sessions list so the sidebar updates
       await queryClient.invalidateQueries({ 
         queryKey: getListArchitectureSessionsQueryKey() 
       });
@@ -83,20 +81,29 @@ export function useGenerateArchitecturePlan() {
   return { generate, isGenerating, content };
 }
 
-// Hook for sending follow-up questions via SSE
 export function useArchitectureFollowup() {
   const [isAnswering, setIsAnswering] = useState(false);
   const [answerStream, setAnswerStream] = useState("");
   
-  const askFollowup = async (sessionId: number, question: string, onComplete?: () => void) => {
+  const askFollowup = async (
+    sessionId: number,
+    question: string,
+    images?: string[],
+    onComplete?: () => void,
+  ) => {
     setIsAnswering(true);
     setAnswerStream("");
     
     try {
+      const bodyPayload: { question: string; images?: string[] } = { question };
+      if (images && images.length > 0) {
+        bodyPayload.images = images;
+      }
+
       const res = await fetch(`/api/architecture/sessions/${sessionId}/followup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify(bodyPayload),
       });
       
       if (!res.ok) throw new Error("Failed to send follow-up");
