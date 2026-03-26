@@ -27,8 +27,8 @@ export default function Session() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [dbMessages, answerStream]);
 
-  const handleFollowup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFollowup = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if ((!question.trim() && followupImages.length === 0) || isAnswering) return;
     
     const currentQ = question;
@@ -39,6 +39,13 @@ export default function Session() {
     await askFollowup(sessionId, currentQ, currentImages.length > 0 ? currentImages : undefined, () => {
       refetchMessages();
     });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleFollowup();
+    }
   };
 
   if (sessionLoading) {
@@ -88,107 +95,116 @@ export default function Session() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin">
-        <div className="max-w-4xl mx-auto space-y-8 pb-32">
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-panel rounded-3xl p-6 md:p-10 shadow-xl"
-          >
-            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-zinc-800/50">
-              <Bot className="w-6 h-6 text-teal-400" />
-              <h3 className="text-lg font-bold text-zinc-100">المخطط المعماري المقترح</h3>
-            </div>
-            <MarkdownRenderer content={session.generatedPlan} />
-          </motion.div>
-
-          {visibleMessages.length > 1 && (
-            <div className="space-y-6 mt-12">
-              <div className="flex items-center gap-3 mb-4">
-                <MessageSquare className="w-5 h-5 text-indigo-400" />
-                <h4 className="text-md font-bold text-zinc-300">النقاش والتعديلات</h4>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="shrink-0 p-4 md:px-8 md:pt-6 md:pb-2 bg-gradient-to-b from-transparent to-transparent z-30">
+          <div className="max-w-4xl mx-auto">
+            <form onSubmit={handleFollowup} className="relative flex items-end gap-2">
+              <ImageUpload images={followupImages} onImagesChange={setFollowupImages} maxImages={3} compact />
+              <div className="relative flex-1">
+                <textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="اسأل سؤالاً، اطلب تعديلاً، أو أرفق صورة مرجعية... (Shift+Enter لسطر جديد)"
+                  disabled={isAnswering}
+                  rows={1}
+                  className="w-full bg-zinc-900 border border-zinc-700/80 rounded-2xl pl-16 pr-6 py-4 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 shadow-xl transition-all disabled:opacity-50 resize-none overflow-hidden"
+                  style={{ minHeight: "56px", maxHeight: "150px" }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = "auto";
+                    target.style.height = Math.min(target.scrollHeight, 150) + "px";
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={(!question.trim() && followupImages.length === 0) || isAnswering}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-teal-500 hover:bg-teal-400 text-white rounded-xl transition-colors disabled:opacity-50 disabled:hover:bg-teal-500"
+                >
+                  {isAnswering ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rtl:-scale-x-100" />}
+                </button>
               </div>
-              
-              {visibleMessages.map((msg, idx) => {
-                if (idx === 0 && msg.role === 'user' && msg.content.includes(session.buildingType)) return null;
-                if (idx === 1 && msg.role === 'assistant' && msg.content === session.generatedPlan) return null;
+            </form>
+          </div>
+        </div>
 
-                const isUser = msg.role === "user";
-                return (
-                  <motion.div 
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex gap-4 ${isUser ? "flex-row-reverse" : ""}`}
-                  >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      isUser ? "bg-indigo-500/20 text-indigo-400" : "bg-teal-500/20 text-teal-400"
-                    }`}>
-                      {isUser ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-                    </div>
-                    <div className={`flex-1 ${isUser ? "pl-12" : "pr-12"}`}>
-                      <div className={`p-5 rounded-2xl ${
-                        isUser 
-                          ? "bg-indigo-500/10 border border-indigo-500/20 text-zinc-200" 
-                          : "glass-panel text-zinc-300"
-                      }`}>
-                        <MarkdownRenderer content={msg.content} />
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-
-          {isAnswering && answerStream && (
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin">
+          <div className="max-w-4xl mx-auto space-y-8 pb-8">
+            
             <motion.div 
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex gap-4"
+              className="glass-panel rounded-3xl p-6 md:p-10 shadow-xl"
             >
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-400">
-                <Bot className="w-5 h-5" />
+              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-zinc-800/50">
+                <Bot className="w-6 h-6 text-teal-400" />
+                <h3 className="text-lg font-bold text-zinc-100">المخطط المعماري المقترح</h3>
               </div>
-              <div className="flex-1 pr-12">
-                <div className="p-5 rounded-2xl glass-panel text-zinc-300">
-                  <MarkdownRenderer content={answerStream} />
-                  <div className="mt-4 flex items-center gap-2 text-zinc-500">
-                    <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0s" }}></div>
-                    <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                    <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+              <MarkdownRenderer content={session.generatedPlan} />
+            </motion.div>
+
+            {visibleMessages.length > 1 && (
+              <div className="space-y-6 mt-12">
+                <div className="flex items-center gap-3 mb-4">
+                  <MessageSquare className="w-5 h-5 text-indigo-400" />
+                  <h4 className="text-md font-bold text-zinc-300">النقاش والتعديلات</h4>
+                </div>
+                
+                {visibleMessages.map((msg, idx) => {
+                  if (idx === 0 && msg.role === 'user' && msg.content.includes(session.buildingType)) return null;
+                  if (idx === 1 && msg.role === 'assistant' && msg.content === session.generatedPlan) return null;
+
+                  const isUser = msg.role === "user";
+                  return (
+                    <motion.div 
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex gap-4 ${isUser ? "flex-row-reverse" : ""}`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                        isUser ? "bg-indigo-500/20 text-indigo-400" : "bg-teal-500/20 text-teal-400"
+                      }`}>
+                        {isUser ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+                      </div>
+                      <div className={`flex-1 ${isUser ? "pl-12" : "pr-12"}`}>
+                        <div className={`p-5 rounded-2xl ${
+                          isUser 
+                            ? "bg-indigo-500/10 border border-indigo-500/20 text-zinc-200" 
+                            : "glass-panel text-zinc-300"
+                        }`}>
+                          <MarkdownRenderer content={msg.content} />
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+
+            {isAnswering && answerStream && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-4"
+              >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-400">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <div className="flex-1 pr-12">
+                  <div className="p-5 rounded-2xl glass-panel text-zinc-300">
+                    <MarkdownRenderer content={answerStream} />
+                    <div className="mt-4 flex items-center gap-2 text-zinc-500">
+                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0s" }}></div>
+                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[#09090b] via-[#09090b]/90 to-transparent z-30">
-        <div className="max-w-4xl mx-auto">
-          <form onSubmit={handleFollowup} className="relative flex items-center gap-2">
-            <ImageUpload images={followupImages} onImagesChange={setFollowupImages} maxImages={3} compact />
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="اسأل سؤالاً، اطلب تعديلاً، أو أرفق صورة مرجعية..."
-                disabled={isAnswering}
-                className="w-full bg-zinc-900 border border-zinc-700/80 rounded-2xl pl-16 pr-6 py-4 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 shadow-xl transition-all disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={(!question.trim() && followupImages.length === 0) || isAnswering}
-                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-teal-500 hover:bg-teal-400 text-white rounded-xl transition-colors disabled:opacity-50 disabled:hover:bg-teal-500"
-              >
-                {isAnswering ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rtl:-scale-x-100" />}
-              </button>
-            </div>
-          </form>
+              </motion.div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       </div>
     </div>

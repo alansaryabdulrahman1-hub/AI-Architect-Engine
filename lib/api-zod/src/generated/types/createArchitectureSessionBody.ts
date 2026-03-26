@@ -9,36 +9,46 @@ import type { CreateArchitectureSessionBodyAcType } from "./createArchitectureSe
 import type { CreateArchitectureSessionBodyBuildingType } from "./createArchitectureSessionBodyBuildingType";
 import type { CreateArchitectureSessionBodyFacadeDirection } from "./createArchitectureSessionBodyFacadeDirection";
 import type { CreateArchitectureSessionBodyFloors } from "./createArchitectureSessionBodyFloors";
+import type { CreateArchitectureSessionBodyKitchenType } from "./createArchitectureSessionBodyKitchenType";
 import type { CreateArchitectureSessionBodyStairLocation } from "./createArchitectureSessionBodyStairLocation";
 
 export interface CreateArchitectureSessionBody {
   buildingType: CreateArchitectureSessionBodyBuildingType;
   buildingSubtype: string;
   area: number;
-  /** Number of floors as a string value from dropdown */
+  /** Number of floors */
   floors: CreateArchitectureSessionBodyFloors;
   /** North side length of the plot in meters */
-  sideNorth?: number;
+  sideNorth: number;
   /** South side length of the plot in meters */
-  sideSouth?: number;
+  sideSouth: number;
   /** East side length of the plot in meters */
-  sideEast?: number;
+  sideEast: number;
   /** West side length of the plot in meters */
-  sideWest?: number;
+  sideWest: number;
   /** Chord/diagonal length for correcting irregular non-right-angle corners in meters */
-  chordLength?: number;
-  /** Front setback in meters */
-  setbackFront?: number;
-  /** Side setback in meters */
-  setbackSide?: number;
+  chordLength: number;
+  /** Front setback in meters (street side) */
+  setbackFront: number;
+  /** Side setback in meters (neighbor side) */
+  setbackSide: number;
   /** Back setback in meters */
-  setbackBack?: number;
+  setbackBack: number;
   /** Air conditioning system type */
-  acType?: CreateArchitectureSessionBodyAcType;
-  /** Facade direction */
-  facadeDirection?: CreateArchitectureSessionBodyFacadeDirection;
-  /** Stair location within the building */
-  stairLocation?: CreateArchitectureSessionBodyStairLocation;
+  acType: CreateArchitectureSessionBodyAcType;
+  /** Main facade direction */
+  facadeDirection: CreateArchitectureSessionBodyFacadeDirection;
+  /** Stair and elevator location within the building */
+  stairLocation: CreateArchitectureSessionBodyStairLocation;
+  /**
+   * Number of bedrooms required
+   * @minimum 1
+   */
+  bedroomCount: number;
+  /** Kitchen type */
+  kitchenType: CreateArchitectureSessionBodyKitchenType;
+  /** Ground level difference from street in centimeters */
+  groundLevelDifference: number;
   additionalRequirements?: string;
   /** Array of base64-encoded image data URLs for sketches, site photos, or design references */
   images?: string[];

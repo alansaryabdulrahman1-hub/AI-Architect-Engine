@@ -355,6 +355,12 @@ components:
           type: string
         stairLocation:
           type: string
+        bedroomCount:
+          type: integer
+        kitchenType:
+          type: string
+        groundLevelDifference:
+          type: number
         additionalRequirements:
           type: string
         generatedPlan:
@@ -385,8 +391,8 @@ components:
           type: number
         floors:
           type: string
-          enum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-          description: Number of floors as a string value from dropdown
+          enum: [ground_only, ground_first, ground_first_annex]
+          description: Number of floors
         sideNorth:
           type: number
           description: North side length of the plot in meters
@@ -404,25 +410,36 @@ components:
           description: Chord/diagonal length for correcting irregular non-right-angle corners in meters
         setbackFront:
           type: number
-          description: Front setback in meters
+          description: Front setback in meters (street side)
         setbackSide:
           type: number
-          description: Side setback in meters
+          description: Side setback in meters (neighbor side)
         setbackBack:
           type: number
           description: Back setback in meters
         acType:
           type: string
-          enum: [central, split, vrf]
+          enum: [split, concealed, central]
           description: Air conditioning system type
         facadeDirection:
           type: string
-          enum: [north, northeast, east, southeast, south, southwest, west, northwest]
-          description: Facade direction
+          enum: [north, south, east, west]
+          description: Main facade direction
         stairLocation:
           type: string
-          enum: [central, side, external]
-          description: Stair location within the building
+          enum: [central, side, back]
+          description: Stair and elevator location within the building
+        bedroomCount:
+          type: integer
+          minimum: 1
+          description: Number of bedrooms required
+        kitchenType:
+          type: string
+          enum: [open, closed]
+          description: Kitchen type
+        groundLevelDifference:
+          type: number
+          description: Ground level difference from street in centimeters
         additionalRequirements:
           type: string
         images:
@@ -435,6 +452,20 @@ components:
         - buildingSubtype
         - area
         - floors
+        - sideNorth
+        - sideSouth
+        - sideEast
+        - sideWest
+        - chordLength
+        - setbackFront
+        - setbackSide
+        - setbackBack
+        - acType
+        - facadeDirection
+        - stairLocation
+        - bedroomCount
+        - kitchenType
+        - groundLevelDifference
     ArchitectureFollowupBody:
       type: object
       properties:

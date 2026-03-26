@@ -21,6 +21,9 @@ export const architectureSessions = pgTable("architecture_sessions", {
   acType: text("ac_type"),
   facadeDirection: text("facade_direction"),
   stairLocation: text("stair_location"),
+  bedroomCount: integer("bedroom_count"),
+  kitchenType: text("kitchen_type"),
+  groundLevelDifference: real("ground_level_difference"),
   additionalRequirements: text("additional_requirements"),
   generatedPlan: text("generated_plan").notNull().default(""),
   conversationId: integer("conversation_id")

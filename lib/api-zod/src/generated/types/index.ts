@@ -13,6 +13,7 @@ export * from "./createArchitectureSessionBodyAcType";
 export * from "./createArchitectureSessionBodyBuildingType";
 export * from "./createArchitectureSessionBodyFacadeDirection";
 export * from "./createArchitectureSessionBodyFloors";
+export * from "./createArchitectureSessionBodyKitchenType";
 export * from "./createArchitectureSessionBodyStairLocation";
 export * from "./createOpenaiConversationBody";
 export * from "./healthStatus";

@@ -7,18 +7,14 @@
  */
 
 /**
- * Facade direction
+ * Main facade direction
  */
 export type CreateArchitectureSessionBodyFacadeDirection =
   (typeof CreateArchitectureSessionBodyFacadeDirection)[keyof typeof CreateArchitectureSessionBodyFacadeDirection];
 
 export const CreateArchitectureSessionBodyFacadeDirection = {
   north: "north",
-  northeast: "northeast",
-  east: "east",
-  southeast: "southeast",
   south: "south",
-  southwest: "southwest",
+  east: "east",
   west: "west",
-  northwest: "northwest",
 } as const;

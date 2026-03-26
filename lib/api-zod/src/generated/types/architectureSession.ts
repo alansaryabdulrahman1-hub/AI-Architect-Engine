@@ -23,6 +23,9 @@ export interface ArchitectureSession {
   acType?: string;
   facadeDirection?: string;
   stairLocation?: string;
+  bedroomCount?: number;
+  kitchenType?: string;
+  groundLevelDifference?: number;
   additionalRequirements?: string;
   generatedPlan: string;
   conversationId: number;

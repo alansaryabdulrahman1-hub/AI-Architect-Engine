@@ -59,6 +59,9 @@ export interface ArchitectureSession {
   acType?: string;
   facadeDirection?: string;
   stairLocation?: string;
+  bedroomCount?: number;
+  kitchenType?: string;
+  groundLevelDifference?: number;
   additionalRequirements?: string;
   generatedPlan: string;
   conversationId: number;
@@ -78,32 +81,15 @@ export const CreateArchitectureSessionBodyBuildingType = {
 } as const;
 
 /**
- * Number of floors as a string value from dropdown
+ * Number of floors
  */
 export type CreateArchitectureSessionBodyFloors =
   (typeof CreateArchitectureSessionBodyFloors)[keyof typeof CreateArchitectureSessionBodyFloors];
 
 export const CreateArchitectureSessionBodyFloors = {
-  NUMBER_1: 1,
-  NUMBER_2: 2,
-  NUMBER_3: 3,
-  NUMBER_4: 4,
-  NUMBER_5: 5,
-  NUMBER_6: 6,
-  NUMBER_7: 7,
-  NUMBER_8: 8,
-  NUMBER_9: 9,
-  NUMBER_10: 10,
-  NUMBER_11: 11,
-  NUMBER_12: 12,
-  NUMBER_13: 13,
-  NUMBER_14: 14,
-  NUMBER_15: 15,
-  NUMBER_16: 16,
-  NUMBER_17: 17,
-  NUMBER_18: 18,
-  NUMBER_19: 19,
-  NUMBER_20: 20,
+  ground_only: "ground_only",
+  ground_first: "ground_first",
+  ground_first_annex: "ground_first_annex",
 } as const;
 
 /**
@@ -113,30 +99,26 @@ export type CreateArchitectureSessionBodyAcType =
   (typeof CreateArchitectureSessionBodyAcType)[keyof typeof CreateArchitectureSessionBodyAcType];
 
 export const CreateArchitectureSessionBodyAcType = {
-  central: "central",
   split: "split",
-  vrf: "vrf",
+  concealed: "concealed",
+  central: "central",
 } as const;
 
 /**
- * Facade direction
+ * Main facade direction
  */
 export type CreateArchitectureSessionBodyFacadeDirection =
   (typeof CreateArchitectureSessionBodyFacadeDirection)[keyof typeof CreateArchitectureSessionBodyFacadeDirection];
 
 export const CreateArchitectureSessionBodyFacadeDirection = {
   north: "north",
-  northeast: "northeast",
-  east: "east",
-  southeast: "southeast",
   south: "south",
-  southwest: "southwest",
+  east: "east",
   west: "west",
-  northwest: "northwest",
 } as const;
 
 /**
- * Stair location within the building
+ * Stair and elevator location within the building
  */
 export type CreateArchitectureSessionBodyStairLocation =
   (typeof CreateArchitectureSessionBodyStairLocation)[keyof typeof CreateArchitectureSessionBodyStairLocation];
@@ -144,37 +126,57 @@ export type CreateArchitectureSessionBodyStairLocation =
 export const CreateArchitectureSessionBodyStairLocation = {
   central: "central",
   side: "side",
-  external: "external",
+  back: "back",
+} as const;
+
+/**
+ * Kitchen type
+ */
+export type CreateArchitectureSessionBodyKitchenType =
+  (typeof CreateArchitectureSessionBodyKitchenType)[keyof typeof CreateArchitectureSessionBodyKitchenType];
+
+export const CreateArchitectureSessionBodyKitchenType = {
+  open: "open",
+  closed: "closed",
 } as const;
 
 export interface CreateArchitectureSessionBody {
   buildingType: CreateArchitectureSessionBodyBuildingType;
   buildingSubtype: string;
   area: number;
-  /** Number of floors as a string value from dropdown */
+  /** Number of floors */
   floors: CreateArchitectureSessionBodyFloors;
   /** North side length of the plot in meters */
-  sideNorth?: number;
+  sideNorth: number;
   /** South side length of the plot in meters */
-  sideSouth?: number;
+  sideSouth: number;
   /** East side length of the plot in meters */
-  sideEast?: number;
+  sideEast: number;
   /** West side length of the plot in meters */
-  sideWest?: number;
+  sideWest: number;
   /** Chord/diagonal length for correcting irregular non-right-angle corners in meters */
-  chordLength?: number;
-  /** Front setback in meters */
-  setbackFront?: number;
-  /** Side setback in meters */
-  setbackSide?: number;
+  chordLength: number;
+  /** Front setback in meters (street side) */
+  setbackFront: number;
+  /** Side setback in meters (neighbor side) */
+  setbackSide: number;
   /** Back setback in meters */
-  setbackBack?: number;
+  setbackBack: number;
   /** Air conditioning system type */
-  acType?: CreateArchitectureSessionBodyAcType;
-  /** Facade direction */
-  facadeDirection?: CreateArchitectureSessionBodyFacadeDirection;
-  /** Stair location within the building */
-  stairLocation?: CreateArchitectureSessionBodyStairLocation;
+  acType: CreateArchitectureSessionBodyAcType;
+  /** Main facade direction */
+  facadeDirection: CreateArchitectureSessionBodyFacadeDirection;
+  /** Stair and elevator location within the building */
+  stairLocation: CreateArchitectureSessionBodyStairLocation;
+  /**
+   * Number of bedrooms required
+   * @minimum 1
+   */
+  bedroomCount: number;
+  /** Kitchen type */
+  kitchenType: CreateArchitectureSessionBodyKitchenType;
+  /** Ground level difference from street in centimeters */
+  groundLevelDifference: number;
   additionalRequirements?: string;
   /** Array of base64-encoded image data URLs for sketches, site photos, or design references */
   images?: string[];

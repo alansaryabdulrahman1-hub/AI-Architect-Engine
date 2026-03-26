@@ -7,7 +7,7 @@
  */
 
 /**
- * Stair location within the building
+ * Stair and elevator location within the building
  */
 export type CreateArchitectureSessionBodyStairLocation =
   (typeof CreateArchitectureSessionBodyStairLocation)[keyof typeof CreateArchitectureSessionBodyStairLocation];
@@ -15,5 +15,5 @@ export type CreateArchitectureSessionBodyStairLocation =
 export const CreateArchitectureSessionBodyStairLocation = {
   central: "central",
   side: "side",
-  external: "external",
+  back: "back",
 } as const;

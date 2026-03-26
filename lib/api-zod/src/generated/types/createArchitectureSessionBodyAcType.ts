@@ -13,7 +13,7 @@ export type CreateArchitectureSessionBodyAcType =
   (typeof CreateArchitectureSessionBodyAcType)[keyof typeof CreateArchitectureSessionBodyAcType];
 
 export const CreateArchitectureSessionBodyAcType = {
-  central: "central",
   split: "split",
-  vrf: "vrf",
+  concealed: "concealed",
+  central: "central",
 } as const;

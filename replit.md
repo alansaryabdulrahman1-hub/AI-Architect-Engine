@@ -81,10 +81,15 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 React+Vite frontend with full RTL Arabic support. Dark professional theme inspired by modern AI tools.
 
 - Sidebar with session history
-- Form for building type, subtype, area, floors, and extra requirements
+- Comprehensive form with all-required engineering fields:
+  - Building type/subtype, area, floors (3 options: ground_only, ground_first, ground_first_annex)
+  - Plot dimensions (4 sides + chord), setbacks (front/side/back)
+  - Program: bedroom count, kitchen type (open/closed), stair location (central/side/back)
+  - Environment: facade direction (N/S/E/W), AC type (split/concealed/central), ground level difference
+- Arabic validation errors, area overflow blocking, irregular plot alert
 - Image upload support (sketches, site photos, design references) — up to 5 images, converted to base64
 - Real-time streaming AI plan generation with vision-capable image analysis
-- Session view with the generated architectural plan + follow-up chat with image attachments
+- Session view with the generated architectural plan + follow-up chat (textarea, Enter=send, Shift+Enter=newline) with image attachments
 - Code block copy buttons for AutoLISP scripts
 
 ### `artifacts/api-server` (`@workspace/api-server`)

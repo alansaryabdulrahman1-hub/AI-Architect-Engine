@@ -25,24 +25,37 @@ const BUILDING_TYPE_LABELS: Record<string, string> = {
 const AC_TYPE_LABELS: Record<string, string> = {
   central: "مركزي (Central)",
   split: "سبليت (Split Units)",
-  vrf: "VRF",
+  concealed: "كونسيلد (Concealed)",
 };
 
 const FACADE_DIRECTION_LABELS: Record<string, string> = {
   north: "شمال (North)",
-  northeast: "شمال شرق (Northeast)",
-  east: "شرق (East)",
-  southeast: "جنوب شرق (Southeast)",
   south: "جنوب (South)",
-  southwest: "جنوب غرب (Southwest)",
+  east: "شرق (East)",
   west: "غرب (West)",
-  northwest: "شمال غرب (Northwest)",
 };
 
 const STAIR_LOCATION_LABELS: Record<string, string> = {
   central: "مركزية (Central)",
   side: "جانبية (Side)",
-  external: "خارجية (External)",
+  back: "خلفي (Back)",
+};
+
+const FLOORS_LABELS: Record<string, string> = {
+  ground_only: "أرضي فقط (Ground Only)",
+  ground_first: "أرضي + أول (Ground + First)",
+  ground_first_annex: "أرضي + أول + ملحق (Ground + First + Annex)",
+};
+
+const FLOORS_COUNT: Record<string, number> = {
+  ground_only: 1,
+  ground_first: 2,
+  ground_first_annex: 3,
+};
+
+const KITCHEN_TYPE_LABELS: Record<string, string> = {
+  open: "مفتوح (Open)",
+  closed: "مغلق (Closed)",
 };
 
 function computeNetBuildableArea(params: {
@@ -59,7 +72,6 @@ function computeNetBuildableArea(params: {
   if (!sideNorth || !sideSouth || !sideEast || !sideWest) return null;
   const avgWidth = (sideNorth + sideSouth) / 2;
   const avgDepth = (sideEast + sideWest) / 2;
-  const grossArea = avgWidth * avgDepth;
   const frontSetback = setbackFront ?? 0;
   const sideSetbackTotal = (setbackSide ?? 0) * 2;
   const backSetback = setbackBack ?? 0;
@@ -72,7 +84,7 @@ function buildArchitecturePrompt(
   buildingType: string,
   buildingSubtype: string,
   area: number,
-  floors: number | string,
+  floors: string,
   options: {
     additionalRequirements?: string | null;
     hasImages?: boolean;
@@ -87,10 +99,15 @@ function buildArchitecturePrompt(
     acType?: string | null;
     facadeDirection?: string | null;
     stairLocation?: string | null;
+    bedroomCount?: number | null;
+    kitchenType?: string | null;
+    groundLevelDifference?: number | null;
     netBuildableArea?: number | null;
   } = {},
 ): string {
   const typeLabel = BUILDING_TYPE_LABELS[buildingType] || buildingType;
+  const floorsLabel = FLOORS_LABELS[floors] || floors;
+  const floorsNum = FLOORS_COUNT[floors] || 1;
   const reqText = options.additionalRequirements
     ? `\n- متطلبات إضافية: ${options.additionalRequirements}`
     : "";
@@ -105,23 +122,31 @@ function buildArchitecturePrompt(
 ثم استخدم هذا التحليل لإثراء المخطط المعماري المولّد.`
     : "";
 
-  const plotSection = (options.sideNorth || options.sideSouth || options.sideEast || options.sideWest)
-    ? `\n\n**أبعاد القطعة:**
+  const plotSection = `\n\n**أبعاد القطعة:**
 - الجهة الشمالية: ${options.sideNorth ?? "—"} م
 - الجهة الجنوبية: ${options.sideSouth ?? "—"} م
 - الجهة الشرقية: ${options.sideEast ?? "—"} م
 - الجهة الغربية: ${options.sideWest ?? "—"} م${options.chordLength ? `\n- قطر/وتر تصحيح الزاوية: ${options.chordLength} م` : ""}
 
 **الاشتراطات والإيقاعات:**
-- إيقاع أمامي: ${options.setbackFront ?? 0} م
-- إيقاع جانبي (لكل جانب): ${options.setbackSide ?? 0} م
-- إيقاع خلفي: ${options.setbackBack ?? 0} م${options.netBuildableArea != null ? `\n- **صافي المساحة القابلة للبناء: ${options.netBuildableArea.toFixed(1)} م²**` : ""}`
+- إيقاع أمامي (جهة الشارع): ${options.setbackFront ?? 0} م
+- إيقاع جانبي (جهة الجيران - لكل جانب): ${options.setbackSide ?? 0} م
+- إيقاع خلفي: ${options.setbackBack ?? 0} م${options.netBuildableArea != null ? `\n- **صافي المساحة القابلة للبناء للدور الواحد: ${options.netBuildableArea.toFixed(1)} م²**` : ""}`;
+
+  const programSection = [
+    options.bedroomCount ? `- عدد غرف النوم المطلوبة: ${options.bedroomCount}` : null,
+    options.kitchenType ? `- نوع المطبخ: ${KITCHEN_TYPE_LABELS[options.kitchenType] || options.kitchenType}` : null,
+    options.groundLevelDifference != null ? `- فارق منسوب الأرض عن الشارع: ${options.groundLevelDifference} سم` : null,
+  ].filter(Boolean).join("\n");
+
+  const programBlock = programSection
+    ? `\n\n**البرنامج المساحي:**\n${programSection}`
     : "";
 
   const siteDetailsSection = [
-    options.acType ? `- نظام التكييف: ${AC_TYPE_LABELS[options.acType] || options.acType}` : null,
+    options.acType ? `- نظام التكييف: ${AC_TYPE_LABELS[options.acType] || options.acType} (لتحديد ارتفاعات الأسقف الإنشائية)` : null,
     options.facadeDirection ? `- اتجاه الواجهة الرئيسية: ${FACADE_DIRECTION_LABELS[options.facadeDirection] || options.facadeDirection}` : null,
-    options.stairLocation ? `- موقع الدرج: ${STAIR_LOCATION_LABELS[options.stairLocation] || options.stairLocation}` : null,
+    options.stairLocation ? `- موقع الدرج والمصعد: ${STAIR_LOCATION_LABELS[options.stairLocation] || options.stairLocation}` : null,
   ].filter(Boolean).join("\n");
 
   const siteDetailsBlock = siteDetailsSection
@@ -153,7 +178,7 @@ function buildArchitecturePrompt(
 - نوع المبنى: ${typeLabel}
 - الصنف/التخصص: ${buildingSubtype}
 - المساحة الإجمالية للقطعة: ${area} متر مربع
-- عدد الأدوار: ${floors} دور${reqText}${plotSection}${siteDetailsBlock}${imageAnalysisSection}
+- عدد الأدوار: ${floorsLabel} (${floorsNum} أدوار)${reqText}${plotSection}${programBlock}${siteDetailsBlock}${imageAnalysisSection}
 ${engineeringRules}
 
 **المطلوب منك:**
@@ -299,6 +324,9 @@ router.post("/sessions", async (req, res) => {
         acType: body.acType,
         facadeDirection: body.facadeDirection,
         stairLocation: body.stairLocation,
+        bedroomCount: body.bedroomCount,
+        kitchenType: body.kitchenType,
+        groundLevelDifference: body.groundLevelDifference,
         netBuildableArea,
       },
     );
@@ -312,8 +340,9 @@ router.post("/sessions", async (req, res) => {
     const facadeLabel = body.facadeDirection ? (FACADE_DIRECTION_LABELS[body.facadeDirection] || body.facadeDirection) : null;
     const acLabel = body.acType ? (AC_TYPE_LABELS[body.acType] || body.acType) : null;
     const stairLabel = body.stairLocation ? (STAIR_LOCATION_LABELS[body.stairLocation] || body.stairLocation) : null;
+    const floorsLabel = FLOORS_LABELS[body.floors] || body.floors;
 
-    const userRequestText = `أريد تصميم ${body.buildingSubtype} (${BUILDING_TYPE_LABELS[body.buildingType] || body.buildingType}) بمساحة ${body.area} م² وعدد ${body.floors} أدوار.${facadeLabel ? ` اتجاه الواجهة: ${facadeLabel}.` : ""}${acLabel ? ` نظام التكييف: ${acLabel}.` : ""}${stairLabel ? ` موقع الدرج: ${stairLabel}.` : ""}${body.additionalRequirements ? ` متطلبات إضافية: ${body.additionalRequirements}` : ""}${hasImages ? " أرفقت صوراً مرجعية للتحليل." : ""}`;
+    const userRequestText = `أريد تصميم ${body.buildingSubtype} (${BUILDING_TYPE_LABELS[body.buildingType] || body.buildingType}) بمساحة ${body.area} م² وعدد أدوار: ${floorsLabel}. عدد غرف النوم: ${body.bedroomCount}. نوع المطبخ: ${KITCHEN_TYPE_LABELS[body.kitchenType] || body.kitchenType}. فارق المنسوب: ${body.groundLevelDifference} سم.${facadeLabel ? ` اتجاه الواجهة: ${facadeLabel}.` : ""}${acLabel ? ` نظام التكييف: ${acLabel}.` : ""}${stairLabel ? ` موقع الدرج: ${stairLabel}.` : ""}${body.additionalRequirements ? ` متطلبات إضافية: ${body.additionalRequirements}` : ""}${hasImages ? " أرفقت صوراً مرجعية للتحليل." : ""}`;
 
     const userContent: ContentPart[] = [
       { type: "text", text: userRequestText },
@@ -365,18 +394,21 @@ router.post("/sessions", async (req, res) => {
         buildingType: body.buildingType,
         buildingSubtype: body.buildingSubtype,
         area: body.area,
-        floors: String(body.floors),
-        sideNorth: body.sideNorth ?? null,
-        sideSouth: body.sideSouth ?? null,
-        sideEast: body.sideEast ?? null,
-        sideWest: body.sideWest ?? null,
-        chordLength: body.chordLength ?? null,
-        setbackFront: body.setbackFront ?? null,
-        setbackSide: body.setbackSide ?? null,
-        setbackBack: body.setbackBack ?? null,
-        acType: body.acType ?? null,
-        facadeDirection: body.facadeDirection ?? null,
-        stairLocation: body.stairLocation ?? null,
+        floors: body.floors,
+        sideNorth: body.sideNorth,
+        sideSouth: body.sideSouth,
+        sideEast: body.sideEast,
+        sideWest: body.sideWest,
+        chordLength: body.chordLength,
+        setbackFront: body.setbackFront,
+        setbackSide: body.setbackSide,
+        setbackBack: body.setbackBack,
+        acType: body.acType,
+        facadeDirection: body.facadeDirection,
+        stairLocation: body.stairLocation,
+        bedroomCount: body.bedroomCount,
+        kitchenType: body.kitchenType,
+        groundLevelDifference: body.groundLevelDifference,
         additionalRequirements: body.additionalRequirements ?? null,
         generatedPlan: fullPlan,
         conversationId: conversation.id,
@@ -511,7 +543,7 @@ router.post("/sessions/:id/followup", async (req, res) => {
     const stream = await openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 16384,
-      messages: chatMessages as Parameters<typeof openai.chat.completions.create>[0]["messages"],
+      messages: chatMessages,
       stream: true,
     });
 
@@ -532,12 +564,12 @@ router.post("/sessions/:id/followup", async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    req.log.error({ err }, "Failed to process followup question");
+    req.log.error({ err }, "Failed to send followup");
     if (streamStarted) {
-      res.write(`data: ${JSON.stringify({ done: true, error: "Failed to process question" })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, error: "Failed to generate response" })}\n\n`);
       res.end();
     } else {
-      res.status(500).json({ error: "Failed to process question" });
+      res.status(500).json({ error: "Failed to send followup" });
     }
   }
 });
