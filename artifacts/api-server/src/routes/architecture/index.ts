@@ -22,20 +22,80 @@ const BUILDING_TYPE_LABELS: Record<string, string> = {
   other: "مبنى آخر (Other)",
 };
 
+const AC_TYPE_LABELS: Record<string, string> = {
+  central: "مركزي (Central)",
+  split: "سبليت (Split Units)",
+  vrf: "VRF",
+};
+
+const FACADE_DIRECTION_LABELS: Record<string, string> = {
+  north: "شمال (North)",
+  northeast: "شمال شرق (Northeast)",
+  east: "شرق (East)",
+  southeast: "جنوب شرق (Southeast)",
+  south: "جنوب (South)",
+  southwest: "جنوب غرب (Southwest)",
+  west: "غرب (West)",
+  northwest: "شمال غرب (Northwest)",
+};
+
+const STAIR_LOCATION_LABELS: Record<string, string> = {
+  central: "مركزية (Central)",
+  side: "جانبية (Side)",
+  external: "خارجية (External)",
+};
+
+function computeNetBuildableArea(params: {
+  sideNorth?: number | null;
+  sideSouth?: number | null;
+  sideEast?: number | null;
+  sideWest?: number | null;
+  chordLength?: number | null;
+  setbackFront?: number | null;
+  setbackSide?: number | null;
+  setbackBack?: number | null;
+}): number | null {
+  const { sideNorth, sideSouth, sideEast, sideWest, setbackFront, setbackSide, setbackBack } = params;
+  if (!sideNorth || !sideSouth || !sideEast || !sideWest) return null;
+  const avgWidth = (sideNorth + sideSouth) / 2;
+  const avgDepth = (sideEast + sideWest) / 2;
+  const grossArea = avgWidth * avgDepth;
+  const frontSetback = setbackFront ?? 0;
+  const sideSetbackTotal = (setbackSide ?? 0) * 2;
+  const backSetback = setbackBack ?? 0;
+  const buildableWidth = Math.max(0, avgWidth - sideSetbackTotal);
+  const buildableDepth = Math.max(0, avgDepth - frontSetback - backSetback);
+  return buildableWidth * buildableDepth;
+}
+
 function buildArchitecturePrompt(
   buildingType: string,
   buildingSubtype: string,
   area: number,
-  floors: number,
-  additionalRequirements?: string | null,
-  hasImages?: boolean,
+  floors: number | string,
+  options: {
+    additionalRequirements?: string | null;
+    hasImages?: boolean;
+    sideNorth?: number | null;
+    sideSouth?: number | null;
+    sideEast?: number | null;
+    sideWest?: number | null;
+    chordLength?: number | null;
+    setbackFront?: number | null;
+    setbackSide?: number | null;
+    setbackBack?: number | null;
+    acType?: string | null;
+    facadeDirection?: string | null;
+    stairLocation?: string | null;
+    netBuildableArea?: number | null;
+  } = {},
 ): string {
   const typeLabel = BUILDING_TYPE_LABELS[buildingType] || buildingType;
-  const reqText = additionalRequirements
-    ? `\n- متطلبات إضافية: ${additionalRequirements}`
+  const reqText = options.additionalRequirements
+    ? `\n- متطلبات إضافية: ${options.additionalRequirements}`
     : "";
 
-  const imageAnalysisSection = hasImages
+  const imageAnalysisSection = options.hasImages
     ? `\n\n**تحليل الصور المرفقة:**
 قم أولاً بتحليل الصور المرفقة بعناية. حدد:
 - الأبعاد المكانية والمقاسات المرئية
@@ -45,23 +105,66 @@ function buildArchitecturePrompt(
 ثم استخدم هذا التحليل لإثراء المخطط المعماري المولّد.`
     : "";
 
+  const plotSection = (options.sideNorth || options.sideSouth || options.sideEast || options.sideWest)
+    ? `\n\n**أبعاد القطعة:**
+- الجهة الشمالية: ${options.sideNorth ?? "—"} م
+- الجهة الجنوبية: ${options.sideSouth ?? "—"} م
+- الجهة الشرقية: ${options.sideEast ?? "—"} م
+- الجهة الغربية: ${options.sideWest ?? "—"} م${options.chordLength ? `\n- قطر/وتر تصحيح الزاوية: ${options.chordLength} م` : ""}
+
+**الاشتراطات والإيقاعات:**
+- إيقاع أمامي: ${options.setbackFront ?? 0} م
+- إيقاع جانبي (لكل جانب): ${options.setbackSide ?? 0} م
+- إيقاع خلفي: ${options.setbackBack ?? 0} م${options.netBuildableArea != null ? `\n- **صافي المساحة القابلة للبناء: ${options.netBuildableArea.toFixed(1)} م²**` : ""}`
+    : "";
+
+  const siteDetailsSection = [
+    options.acType ? `- نظام التكييف: ${AC_TYPE_LABELS[options.acType] || options.acType}` : null,
+    options.facadeDirection ? `- اتجاه الواجهة الرئيسية: ${FACADE_DIRECTION_LABELS[options.facadeDirection] || options.facadeDirection}` : null,
+    options.stairLocation ? `- موقع الدرج: ${STAIR_LOCATION_LABELS[options.stairLocation] || options.stairLocation}` : null,
+  ].filter(Boolean).join("\n");
+
+  const siteDetailsBlock = siteDetailsSection
+    ? `\n\n**تفاصيل الموقع والتصميم:**\n${siteDetailsSection}`
+    : "";
+
+  const engineeringRules = `
+
+**قواعد هندسية إلزامية يجب تطبيقها في المخطط:**
+
+1. **استيعاب الزوايا غير المنتظمة في غرف الخدمات:**
+   إذا كانت القطعة تحتوي على زوايا غير قائمة أو زوايا مائلة (chord)، فيجب استيعاب هذه الأجزاء في غرف الخدمة (دورات مياه، مخازن، مصليات، مواقد غاز) وليس في غرف المعيشة الرئيسية.
+
+2. **نسبة مساحة الممرات < 10%:**
+   مجموع مساحة الممرات والردهات في كل دور يجب ألا يتجاوز 10% من مساحة ذلك الدور. إذا تجاوزت النسبة هذا الحد، يجب إعادة توزيع المساحات أو دمج الممرات مع فراغات أخرى.
+
+3. **فصل مسار الضيوف عن مسار السكان من نقطة الدخول:**
+   منذ لحظة الدخول، يجب أن يكون هناك مسار واضح ومستقل للضيوف (يتجه مباشرة نحو مجلس الرجال/الاستقبال) ومسار منفصل للسكان (يتجه نحو الصالة الداخلية وغرف النوم). لا يجب أن يتقاطع المساران في الفراغات الخاصة.
+
+4. **توجيه غرف المعيشة الرئيسية نحو الشمال أو الشرق:**
+   غرف المعيشة الرئيسية (صالة، غرف نوم رئيسية، مطبخ) يجب أن تواجه الجهة الشمالية أو الشرقية لضمان إضاءة طبيعية مناسبة طوال اليوم وتجنب أشعة الشمس المباشرة في أوقات الذروة الحرارية.
+
+5. **اشتقاق شبكة الأعمدة من موقع الدرج/المصعد:**
+   موقع الدرج والمصعد (المحدد في طلب المستخدم) هو المرجع الأساسي لتحديد شبكة الأعمدة الإنشائية. يجب أن تكون الأعمدة متوافقة مع محاور الدرج/المصعد وأن تُذكر الأبعاد التقريبية للشبكة (مثال: شبكة 5م × 5م).`;
+
   return `أنت مهندس معماري محترف ومتخصص في تصميم المخططات المعمارية وإعداد ملفات AutoCAD. المستخدم يريد مخططاً معمارياً مفصلاً للمشروع التالي:
 
 **تفاصيل المشروع:**
 - نوع المبنى: ${typeLabel}
 - الصنف/التخصص: ${buildingSubtype}
-- المساحة الإجمالية: ${area} متر مربع
-- عدد الأدوار: ${floors} دور${reqText}${imageAnalysisSection}
+- المساحة الإجمالية للقطعة: ${area} متر مربع
+- عدد الأدوار: ${floors} دور${reqText}${plotSection}${siteDetailsBlock}${imageAnalysisSection}
+${engineeringRules}
 
 **المطلوب منك:**
 قم بتوليد مخطط معماري مفصل وشامل يتضمن الأقسام التالية:
 
 1. **الملخص التنفيذي** - وصف موجز للمشروع وفكرته العامة والطراز المعماري المقترح
 
-2. **توزيع الفراغات والغرف** - قائمة تفصيلية لكل غرفة/فراغ في كل دور مع المساحة التقريبية المقترحة بالمتر المربع
+2. **توزيع الفراغات والغرف** - قائمة تفصيلية لكل غرفة/فراغ في كل دور مع **المساحة الصافية بالمتر المربع** (م²)
 
 3. **التوزيع بالأدوار** - وصف تفصيلي لكل دور بمفرده:
-   - ما يحتويه من فراغات
+   - ما يحتويه من فراغات مع مساحة كل فراغ بالمتر المربع
    - العلاقات الوظيفية بين الفراغات
    - المساحة الإجمالية للدور
 
@@ -69,9 +172,9 @@ function buildArchitecturePrompt(
 
 5. **المقترحات المعمارية** - اقتراحات لتحسين التصميم، الإضاءة الطبيعية، التهوية، الخصوصية
 
-6. **الجداول المساحية** - جدول ملخص بجميع الفراغات ومساحاتها (بصيغة جدول Markdown)
+6. **الجداول المساحية** - جدول ملخص بجميع الفراغات ومساحاتها الصافية (م²) بصيغة جدول Markdown
 
-7. **ملاحظات إضافية** - أي توصيات أو اعتبارات خاصة بهذا النوع من المباني
+7. **تطبيق القواعد الهندسية** - قسم يوضح كيف طُبّقت كل قاعدة من القواعد الهندسية الإلزامية الخمس في هذا المخطط تحديداً
 
 8. **الأبعاد والإحداثيات الدقيقة (Precise Dimensions & Coordinates)**
    قدم جدولاً تفصيلياً يتضمن:
@@ -166,13 +269,38 @@ router.post("/sessions", async (req, res) => {
       }
     }
 
+    const netBuildableArea = computeNetBuildableArea({
+      sideNorth: body.sideNorth,
+      sideSouth: body.sideSouth,
+      sideEast: body.sideEast,
+      sideWest: body.sideWest,
+      chordLength: body.chordLength,
+      setbackFront: body.setbackFront,
+      setbackSide: body.setbackSide,
+      setbackBack: body.setbackBack,
+    });
+
     const systemPrompt = buildArchitecturePrompt(
       body.buildingType,
       body.buildingSubtype,
       body.area,
       body.floors,
-      body.additionalRequirements,
-      hasImages,
+      {
+        additionalRequirements: body.additionalRequirements,
+        hasImages,
+        sideNorth: body.sideNorth,
+        sideSouth: body.sideSouth,
+        sideEast: body.sideEast,
+        sideWest: body.sideWest,
+        chordLength: body.chordLength,
+        setbackFront: body.setbackFront,
+        setbackSide: body.setbackSide,
+        setbackBack: body.setbackBack,
+        acType: body.acType,
+        facadeDirection: body.facadeDirection,
+        stairLocation: body.stairLocation,
+        netBuildableArea,
+      },
     );
 
     await db.insert(messages).values({
@@ -181,7 +309,11 @@ router.post("/sessions", async (req, res) => {
       content: systemPrompt,
     });
 
-    const userRequestText = `أريد تصميم ${body.buildingSubtype} (${BUILDING_TYPE_LABELS[body.buildingType] || body.buildingType}) بمساحة ${body.area} م² وعدد ${body.floors} أدوار.${body.additionalRequirements ? ` متطلبات إضافية: ${body.additionalRequirements}` : ""}${hasImages ? " أرفقت صوراً مرجعية للتحليل." : ""}`;
+    const facadeLabel = body.facadeDirection ? (FACADE_DIRECTION_LABELS[body.facadeDirection] || body.facadeDirection) : null;
+    const acLabel = body.acType ? (AC_TYPE_LABELS[body.acType] || body.acType) : null;
+    const stairLabel = body.stairLocation ? (STAIR_LOCATION_LABELS[body.stairLocation] || body.stairLocation) : null;
+
+    const userRequestText = `أريد تصميم ${body.buildingSubtype} (${BUILDING_TYPE_LABELS[body.buildingType] || body.buildingType}) بمساحة ${body.area} م² وعدد ${body.floors} أدوار.${facadeLabel ? ` اتجاه الواجهة: ${facadeLabel}.` : ""}${acLabel ? ` نظام التكييف: ${acLabel}.` : ""}${stairLabel ? ` موقع الدرج: ${stairLabel}.` : ""}${body.additionalRequirements ? ` متطلبات إضافية: ${body.additionalRequirements}` : ""}${hasImages ? " أرفقت صوراً مرجعية للتحليل." : ""}`;
 
     const userContent: ContentPart[] = [
       { type: "text", text: userRequestText },
@@ -233,7 +365,18 @@ router.post("/sessions", async (req, res) => {
         buildingType: body.buildingType,
         buildingSubtype: body.buildingSubtype,
         area: body.area,
-        floors: body.floors,
+        floors: String(body.floors),
+        sideNorth: body.sideNorth ?? null,
+        sideSouth: body.sideSouth ?? null,
+        sideEast: body.sideEast ?? null,
+        sideWest: body.sideWest ?? null,
+        chordLength: body.chordLength ?? null,
+        setbackFront: body.setbackFront ?? null,
+        setbackSide: body.setbackSide ?? null,
+        setbackBack: body.setbackBack ?? null,
+        acType: body.acType ?? null,
+        facadeDirection: body.facadeDirection ?? null,
+        stairLocation: body.stairLocation ?? null,
         additionalRequirements: body.additionalRequirements ?? null,
         generatedPlan: fullPlan,
         conversationId: conversation.id,

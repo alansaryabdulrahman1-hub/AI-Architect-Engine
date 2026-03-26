@@ -5,13 +5,40 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateArchitectureSessionBodyAcType } from "./createArchitectureSessionBodyAcType";
 import type { CreateArchitectureSessionBodyBuildingType } from "./createArchitectureSessionBodyBuildingType";
+import type { CreateArchitectureSessionBodyFacadeDirection } from "./createArchitectureSessionBodyFacadeDirection";
+import type { CreateArchitectureSessionBodyFloors } from "./createArchitectureSessionBodyFloors";
+import type { CreateArchitectureSessionBodyStairLocation } from "./createArchitectureSessionBodyStairLocation";
 
 export interface CreateArchitectureSessionBody {
   buildingType: CreateArchitectureSessionBodyBuildingType;
   buildingSubtype: string;
   area: number;
-  floors: number;
+  /** Number of floors as a string value from dropdown */
+  floors: CreateArchitectureSessionBodyFloors;
+  /** North side length of the plot in meters */
+  sideNorth?: number;
+  /** South side length of the plot in meters */
+  sideSouth?: number;
+  /** East side length of the plot in meters */
+  sideEast?: number;
+  /** West side length of the plot in meters */
+  sideWest?: number;
+  /** Chord/diagonal length for correcting irregular non-right-angle corners in meters */
+  chordLength?: number;
+  /** Front setback in meters */
+  setbackFront?: number;
+  /** Side setback in meters */
+  setbackSide?: number;
+  /** Back setback in meters */
+  setbackBack?: number;
+  /** Air conditioning system type */
+  acType?: CreateArchitectureSessionBodyAcType;
+  /** Facade direction */
+  facadeDirection?: CreateArchitectureSessionBodyFacadeDirection;
+  /** Stair location within the building */
+  stairLocation?: CreateArchitectureSessionBodyStairLocation;
   additionalRequirements?: string;
   /** Array of base64-encoded image data URLs for sketches, site photos, or design references */
   images?: string[];

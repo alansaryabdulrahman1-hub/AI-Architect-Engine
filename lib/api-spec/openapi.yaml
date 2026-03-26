@@ -332,7 +332,29 @@ components:
         area:
           type: number
         floors:
-          type: integer
+          type: string
+        sideNorth:
+          type: number
+        sideSouth:
+          type: number
+        sideEast:
+          type: number
+        sideWest:
+          type: number
+        chordLength:
+          type: number
+        setbackFront:
+          type: number
+        setbackSide:
+          type: number
+        setbackBack:
+          type: number
+        acType:
+          type: string
+        facadeDirection:
+          type: string
+        stairLocation:
+          type: string
         additionalRequirements:
           type: string
         generatedPlan:
@@ -362,7 +384,45 @@ components:
         area:
           type: number
         floors:
-          type: integer
+          type: string
+          enum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+          description: Number of floors as a string value from dropdown
+        sideNorth:
+          type: number
+          description: North side length of the plot in meters
+        sideSouth:
+          type: number
+          description: South side length of the plot in meters
+        sideEast:
+          type: number
+          description: East side length of the plot in meters
+        sideWest:
+          type: number
+          description: West side length of the plot in meters
+        chordLength:
+          type: number
+          description: Chord/diagonal length for correcting irregular non-right-angle corners in meters
+        setbackFront:
+          type: number
+          description: Front setback in meters
+        setbackSide:
+          type: number
+          description: Side setback in meters
+        setbackBack:
+          type: number
+          description: Back setback in meters
+        acType:
+          type: string
+          enum: [central, split, vrf]
+          description: Air conditioning system type
+        facadeDirection:
+          type: string
+          enum: [north, northeast, east, southeast, south, southwest, west, northwest]
+          description: Facade direction
+        stairLocation:
+          type: string
+          enum: [central, side, external]
+          description: Stair location within the building
         additionalRequirements:
           type: string
         images:

@@ -47,7 +47,18 @@ export interface ArchitectureSession {
   buildingType: string;
   buildingSubtype: string;
   area: number;
-  floors: number;
+  floors: string;
+  sideNorth?: number;
+  sideSouth?: number;
+  sideEast?: number;
+  sideWest?: number;
+  chordLength?: number;
+  setbackFront?: number;
+  setbackSide?: number;
+  setbackBack?: number;
+  acType?: string;
+  facadeDirection?: string;
+  stairLocation?: string;
   additionalRequirements?: string;
   generatedPlan: string;
   conversationId: number;
@@ -66,11 +77,104 @@ export const CreateArchitectureSessionBodyBuildingType = {
   other: "other",
 } as const;
 
+/**
+ * Number of floors as a string value from dropdown
+ */
+export type CreateArchitectureSessionBodyFloors =
+  (typeof CreateArchitectureSessionBodyFloors)[keyof typeof CreateArchitectureSessionBodyFloors];
+
+export const CreateArchitectureSessionBodyFloors = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+  NUMBER_4: 4,
+  NUMBER_5: 5,
+  NUMBER_6: 6,
+  NUMBER_7: 7,
+  NUMBER_8: 8,
+  NUMBER_9: 9,
+  NUMBER_10: 10,
+  NUMBER_11: 11,
+  NUMBER_12: 12,
+  NUMBER_13: 13,
+  NUMBER_14: 14,
+  NUMBER_15: 15,
+  NUMBER_16: 16,
+  NUMBER_17: 17,
+  NUMBER_18: 18,
+  NUMBER_19: 19,
+  NUMBER_20: 20,
+} as const;
+
+/**
+ * Air conditioning system type
+ */
+export type CreateArchitectureSessionBodyAcType =
+  (typeof CreateArchitectureSessionBodyAcType)[keyof typeof CreateArchitectureSessionBodyAcType];
+
+export const CreateArchitectureSessionBodyAcType = {
+  central: "central",
+  split: "split",
+  vrf: "vrf",
+} as const;
+
+/**
+ * Facade direction
+ */
+export type CreateArchitectureSessionBodyFacadeDirection =
+  (typeof CreateArchitectureSessionBodyFacadeDirection)[keyof typeof CreateArchitectureSessionBodyFacadeDirection];
+
+export const CreateArchitectureSessionBodyFacadeDirection = {
+  north: "north",
+  northeast: "northeast",
+  east: "east",
+  southeast: "southeast",
+  south: "south",
+  southwest: "southwest",
+  west: "west",
+  northwest: "northwest",
+} as const;
+
+/**
+ * Stair location within the building
+ */
+export type CreateArchitectureSessionBodyStairLocation =
+  (typeof CreateArchitectureSessionBodyStairLocation)[keyof typeof CreateArchitectureSessionBodyStairLocation];
+
+export const CreateArchitectureSessionBodyStairLocation = {
+  central: "central",
+  side: "side",
+  external: "external",
+} as const;
+
 export interface CreateArchitectureSessionBody {
   buildingType: CreateArchitectureSessionBodyBuildingType;
   buildingSubtype: string;
   area: number;
-  floors: number;
+  /** Number of floors as a string value from dropdown */
+  floors: CreateArchitectureSessionBodyFloors;
+  /** North side length of the plot in meters */
+  sideNorth?: number;
+  /** South side length of the plot in meters */
+  sideSouth?: number;
+  /** East side length of the plot in meters */
+  sideEast?: number;
+  /** West side length of the plot in meters */
+  sideWest?: number;
+  /** Chord/diagonal length for correcting irregular non-right-angle corners in meters */
+  chordLength?: number;
+  /** Front setback in meters */
+  setbackFront?: number;
+  /** Side setback in meters */
+  setbackSide?: number;
+  /** Back setback in meters */
+  setbackBack?: number;
+  /** Air conditioning system type */
+  acType?: CreateArchitectureSessionBodyAcType;
+  /** Facade direction */
+  facadeDirection?: CreateArchitectureSessionBodyFacadeDirection;
+  /** Stair location within the building */
+  stairLocation?: CreateArchitectureSessionBodyStairLocation;
   additionalRequirements?: string;
   /** Array of base64-encoded image data URLs for sketches, site photos, or design references */
   images?: string[];

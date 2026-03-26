@@ -100,7 +100,18 @@ export const ListArchitectureSessionsResponseItem = zod.object({
   buildingType: zod.string(),
   buildingSubtype: zod.string(),
   area: zod.number(),
-  floors: zod.number(),
+  floors: zod.string(),
+  sideNorth: zod.number().optional(),
+  sideSouth: zod.number().optional(),
+  sideEast: zod.number().optional(),
+  sideWest: zod.number().optional(),
+  chordLength: zod.number().optional(),
+  setbackFront: zod.number().optional(),
+  setbackSide: zod.number().optional(),
+  setbackBack: zod.number().optional(),
+  acType: zod.string().optional(),
+  facadeDirection: zod.string().optional(),
+  stairLocation: zod.string().optional(),
   additionalRequirements: zod.string().optional(),
   generatedPlan: zod.string(),
   conversationId: zod.number(),
@@ -124,7 +135,76 @@ export const CreateArchitectureSessionBody = zod.object({
   ]),
   buildingSubtype: zod.string(),
   area: zod.number(),
-  floors: zod.number(),
+  floors: zod
+    .union([
+      zod.literal(1),
+      zod.literal(2),
+      zod.literal(3),
+      zod.literal(4),
+      zod.literal(5),
+      zod.literal(6),
+      zod.literal(7),
+      zod.literal(8),
+      zod.literal(9),
+      zod.literal(10),
+      zod.literal(11),
+      zod.literal(12),
+      zod.literal(13),
+      zod.literal(14),
+      zod.literal(15),
+      zod.literal(16),
+      zod.literal(17),
+      zod.literal(18),
+      zod.literal(19),
+      zod.literal(20),
+    ])
+    .describe("Number of floors as a string value from dropdown"),
+  sideNorth: zod
+    .number()
+    .optional()
+    .describe("North side length of the plot in meters"),
+  sideSouth: zod
+    .number()
+    .optional()
+    .describe("South side length of the plot in meters"),
+  sideEast: zod
+    .number()
+    .optional()
+    .describe("East side length of the plot in meters"),
+  sideWest: zod
+    .number()
+    .optional()
+    .describe("West side length of the plot in meters"),
+  chordLength: zod
+    .number()
+    .optional()
+    .describe(
+      "Chord\/diagonal length for correcting irregular non-right-angle corners in meters",
+    ),
+  setbackFront: zod.number().optional().describe("Front setback in meters"),
+  setbackSide: zod.number().optional().describe("Side setback in meters"),
+  setbackBack: zod.number().optional().describe("Back setback in meters"),
+  acType: zod
+    .enum(["central", "split", "vrf"])
+    .optional()
+    .describe("Air conditioning system type"),
+  facadeDirection: zod
+    .enum([
+      "north",
+      "northeast",
+      "east",
+      "southeast",
+      "south",
+      "southwest",
+      "west",
+      "northwest",
+    ])
+    .optional()
+    .describe("Facade direction"),
+  stairLocation: zod
+    .enum(["central", "side", "external"])
+    .optional()
+    .describe("Stair location within the building"),
   additionalRequirements: zod.string().optional(),
   images: zod
     .array(zod.string())
@@ -146,7 +226,18 @@ export const GetArchitectureSessionResponse = zod.object({
   buildingType: zod.string(),
   buildingSubtype: zod.string(),
   area: zod.number(),
-  floors: zod.number(),
+  floors: zod.string(),
+  sideNorth: zod.number().optional(),
+  sideSouth: zod.number().optional(),
+  sideEast: zod.number().optional(),
+  sideWest: zod.number().optional(),
+  chordLength: zod.number().optional(),
+  setbackFront: zod.number().optional(),
+  setbackSide: zod.number().optional(),
+  setbackBack: zod.number().optional(),
+  acType: zod.string().optional(),
+  facadeDirection: zod.string().optional(),
+  stairLocation: zod.string().optional(),
   additionalRequirements: zod.string().optional(),
   generatedPlan: zod.string(),
   conversationId: zod.number(),
