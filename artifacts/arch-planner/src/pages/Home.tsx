@@ -1,30 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, ChevronLeft, Sparkles, Loader2 } from "lucide-react";
+import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, Sparkles, Loader2 } from "lucide-react";
 import { useGenerateArchitecturePlan } from "@/hooks/use-architecture-stream";
-import { useListArchitectureSessions, type CreateArchitectureSessionBody, type CreateArchitectureSessionBodyBuildingType } from "@workspace/api-client-react";
+import { type CreateArchitectureSessionBody, type CreateArchitectureSessionBodyBuildingType, CreateArchitectureSessionBodyBuildingType as BuildingTypeEnum } from "@workspace/api-client-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { useQueryClient } from "@tanstack/react-query";
-import { getListArchitectureSessionsQueryKey } from "@workspace/api-client-react";
 
-const BUILDING_TYPES = [
-  { id: "villa", name: "فيلا سكنية", icon: HomeIcon, color: "from-teal-400 to-teal-600" },
-  { id: "townhouse", name: "تاون هاوس", icon: LayoutGrid, color: "from-blue-400 to-blue-600" },
-  { id: "apartment", name: "شقة", icon: Building2, color: "from-indigo-400 to-indigo-600" },
-  { id: "offices", name: "مكاتب إدارية", icon: Briefcase, color: "from-purple-400 to-purple-600" },
-  { id: "shop", name: "متجر تجاري", icon: Store, color: "from-pink-400 to-pink-600" },
-  { id: "other", name: "أخرى", icon: Building, color: "from-zinc-400 to-zinc-600" },
+const BUILDING_TYPES: Array<{ id: CreateArchitectureSessionBodyBuildingType; name: string; icon: React.ElementType; color: string }> = [
+  { id: BuildingTypeEnum.villa, name: "فيلا سكنية", icon: HomeIcon, color: "from-teal-400 to-teal-600" },
+  { id: BuildingTypeEnum.townhouse, name: "تاون هاوس", icon: LayoutGrid, color: "from-blue-400 to-blue-600" },
+  { id: BuildingTypeEnum.apartment, name: "شقة", icon: Building2, color: "from-indigo-400 to-indigo-600" },
+  { id: BuildingTypeEnum.offices, name: "مكاتب إدارية", icon: Briefcase, color: "from-purple-400 to-purple-600" },
+  { id: BuildingTypeEnum.shop, name: "متجر تجاري", icon: Store, color: "from-pink-400 to-pink-600" },
+  { id: BuildingTypeEnum.other, name: "أخرى", icon: Building, color: "from-zinc-400 to-zinc-600" },
 ];
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { generate, isGenerating, content } = useGenerateArchitecturePlan();
-  const { refetch } = useListArchitectureSessions();
-  const queryClient = useQueryClient();
   
   const [formData, setFormData] = useState<CreateArchitectureSessionBody>({
-    buildingType: "villa" as CreateArchitectureSessionBodyBuildingType,
+    buildingType: BuildingTypeEnum.villa,
     buildingSubtype: "",
     area: 300,
     floors: 2,
@@ -38,18 +34,10 @@ export default function Home() {
     setStep("generating");
     
     try {
-      await generate(formData);
+      const { sessionId } = await generate(formData);
       
-      // After generation finishes, fetch the updated list to find the new session ID
-      const res = await refetch();
-      const sessions = res.data;
-      if (sessions && sessions.length > 0) {
-        // Assume the first one is the newest because they usually return sorted by desc
-        // Or we sort by ID
-        const newest = [...sessions].sort((a, b) => b.id - a.id)[0];
-        if (newest) {
-          setLocation(`/sessions/${newest.id}`);
-        }
+      if (sessionId != null) {
+        setLocation(`/sessions/${sessionId}`);
       }
     } catch (error) {
       console.error(error);

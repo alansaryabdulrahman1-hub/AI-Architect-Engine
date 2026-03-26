@@ -8,7 +8,7 @@ export function useGenerateArchitecturePlan() {
   const [content, setContent] = useState("");
   const queryClient = useQueryClient();
 
-  const generate = async (data: CreateArchitectureSessionBody) => {
+  const generate = async (data: CreateArchitectureSessionBody): Promise<{ text: string; sessionId: number | null }> => {
     setIsGenerating(true);
     setContent("");
     
@@ -24,11 +24,13 @@ export function useGenerateArchitecturePlan() {
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
+      let sessionId: number | null = null;
 
       if (!reader) throw new Error("No readable stream available");
 
       let buffer = "";
-      while (true) {
+      let streamDone = false;
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
         
@@ -43,7 +45,13 @@ export function useGenerateArchitecturePlan() {
             
             try {
               const parsed = JSON.parse(dataStr);
-              if (parsed.done) break;
+              if (parsed.done) {
+                if (parsed.sessionId != null) {
+                  sessionId = parsed.sessionId as number;
+                }
+                streamDone = true;
+                break;
+              }
               if (parsed.content) {
                 fullText += parsed.content;
                 setContent(fullText);
@@ -55,12 +63,12 @@ export function useGenerateArchitecturePlan() {
         }
       }
       
-      // Invalidate the sessions list so the new session appears
+      // Invalidate the sessions list so the sidebar updates
       await queryClient.invalidateQueries({ 
         queryKey: getListArchitectureSessionsQueryKey() 
       });
       
-      return fullText;
+      return { text: fullText, sessionId };
     } catch (error) {
       console.error("Generation error:", error);
       throw error;

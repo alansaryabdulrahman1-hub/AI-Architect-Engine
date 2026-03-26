@@ -179,14 +179,25 @@ router.get("/sessions/:id", async (req, res) => {
 router.delete("/sessions/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const [deleted] = await db
-      .delete(architectureSessions)
-      .where(eq(architectureSessions.id, id))
-      .returning();
-    if (!deleted) {
+
+    const [session] = await db
+      .select()
+      .from(architectureSessions)
+      .where(eq(architectureSessions.id, id));
+
+    if (!session) {
       res.status(404).json({ error: "Session not found" });
       return;
     }
+
+    await db
+      .delete(architectureSessions)
+      .where(eq(architectureSessions.id, id));
+
+    await db
+      .delete(conversations)
+      .where(eq(conversations.id, session.conversationId));
+
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "Failed to delete architecture session");
