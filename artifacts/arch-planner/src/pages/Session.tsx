@@ -13,8 +13,7 @@ export default function Session() {
   
   const { data: session, isLoading: sessionLoading } = useGetArchitectureSession(sessionId);
   const { data: dbMessages, isLoading: messagesLoading, refetch: refetchMessages } = useListOpenaiMessages(
-    session?.conversationId ?? 0, 
-    { query: { enabled: !!session?.conversationId } }
+    session?.conversationId ?? 0
   );
   
   const { askFollowup, isAnswering, answerStream } = useArchitectureFollowup();

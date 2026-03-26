@@ -79,7 +79,7 @@ export default function Home() {
                     <button
                       key={type.id}
                       type="button"
-                      onClick={() => setFormData({...formData, buildingType: type.id as any})}
+                      onClick={() => setFormData({...formData, buildingType: type.id})}
                       className={`
                         relative flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 overflow-hidden
                         ${formData.buildingType === type.id 
