@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, Sparkles, Loader2, AlertTriangle, Info } from "lucide-react";
@@ -131,6 +131,11 @@ export default function Home() {
   const [step, setStep] = useState<"form" | "generating">("form");
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const markTouched = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
 
   const parsedSideNorth = sideNorth ? parseFloat(sideNorth) : undefined;
   const parsedSideSouth = sideSouth ? parseFloat(sideSouth) : undefined;
@@ -221,7 +226,15 @@ export default function Home() {
     }
   };
 
-  const showError = (field: string) => submitted && errors[field];
+  useEffect(() => {
+    if (submitted || Object.keys(touched).length > 0) {
+      setErrors(validate());
+    }
+  }, [formData, sideNorth, sideSouth, sideEast, sideWest, chordLength, setbackFront, setbackSide, setbackBack, bedroomCount, groundLevelDiff, exceedsArea, submitted, touched]);
+
+  const showError = (field: string) => (submitted || touched[field]) && errors[field];
+
+  const blurHandler = (field: string) => () => markTouched(field);
 
   return (
     <div className="min-h-full flex flex-col max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -282,6 +295,7 @@ export default function Home() {
                     type="text"
                     value={formData.buildingSubtype || ""}
                     onChange={e => setFormData({ ...formData, buildingSubtype: e.target.value })}
+                    onBlur={blurHandler("buildingSubtype")}
                     placeholder="مثال: فيلا فاخرة بتصميم مودرن"
                     className={showError("buildingSubtype") ? inputErrorClass : inputClass}
                   />
@@ -296,6 +310,7 @@ export default function Home() {
                       min="10"
                       value={formData.area || ""}
                       onChange={e => setFormData({ ...formData, area: parseFloat(e.target.value) || 0 })}
+                      onBlur={blurHandler("area")}
                       className={showError("area") ? inputErrorClass : inputClass}
                     />
                     {showError("area") && <p className={errorMsgClass}>{errors.area}</p>}
@@ -322,6 +337,7 @@ export default function Home() {
                     <label className={labelClass}>الضلع الشمالي (م){requiredStar}</label>
                     <input type="number" min="0" step="0.1" value={sideNorth}
                       onChange={e => setSideNorth(e.target.value)}
+                      onBlur={blurHandler("sideNorth")}
                       placeholder="0.0" className={showError("sideNorth") ? inputErrorClass : inputClass} />
                     {showError("sideNorth") && <p className={errorMsgClass}>{errors.sideNorth}</p>}
                   </div>
@@ -329,6 +345,7 @@ export default function Home() {
                     <label className={labelClass}>الضلع الجنوبي (م){requiredStar}</label>
                     <input type="number" min="0" step="0.1" value={sideSouth}
                       onChange={e => setSideSouth(e.target.value)}
+                      onBlur={blurHandler("sideSouth")}
                       placeholder="0.0" className={showError("sideSouth") ? inputErrorClass : inputClass} />
                     {showError("sideSouth") && <p className={errorMsgClass}>{errors.sideSouth}</p>}
                   </div>
@@ -336,6 +353,7 @@ export default function Home() {
                     <label className={labelClass}>الضلع الشرقي (م){requiredStar}</label>
                     <input type="number" min="0" step="0.1" value={sideEast}
                       onChange={e => setSideEast(e.target.value)}
+                      onBlur={blurHandler("sideEast")}
                       placeholder="0.0" className={showError("sideEast") ? inputErrorClass : inputClass} />
                     {showError("sideEast") && <p className={errorMsgClass}>{errors.sideEast}</p>}
                   </div>
@@ -343,6 +361,7 @@ export default function Home() {
                     <label className={labelClass}>الضلع الغربي (م){requiredStar}</label>
                     <input type="number" min="0" step="0.1" value={sideWest}
                       onChange={e => setSideWest(e.target.value)}
+                      onBlur={blurHandler("sideWest")}
                       placeholder="0.0" className={showError("sideWest") ? inputErrorClass : inputClass} />
                     {showError("sideWest") && <p className={errorMsgClass}>{errors.sideWest}</p>}
                   </div>
@@ -352,6 +371,7 @@ export default function Home() {
                     <label className={labelClass}>الوتر الرئيسي (م){requiredStar} <span className="text-zinc-500 font-normal">— لضبط زوايا الأرض المتعرجة</span></label>
                     <input type="number" min="0" step="0.1" value={chordLength}
                       onChange={e => setChordLength(e.target.value)}
+                      onBlur={blurHandler("chordLength")}
                       placeholder="0.0" className={showError("chordLength") ? inputErrorClass : inputClass} />
                     {showError("chordLength") && <p className={errorMsgClass}>{errors.chordLength}</p>}
                   </div>
@@ -377,6 +397,7 @@ export default function Home() {
                     <label className={labelClass}>أمامي - جهة الشارع (م){requiredStar}</label>
                     <input type="number" min="0" step="0.1" value={setbackFront}
                       onChange={e => setSetbackFront(e.target.value)}
+                      onBlur={blurHandler("setbackFront")}
                       placeholder="0.0" className={showError("setbackFront") ? inputErrorClass : inputClass} />
                     {showError("setbackFront") && <p className={errorMsgClass}>{errors.setbackFront}</p>}
                   </div>
@@ -384,6 +405,7 @@ export default function Home() {
                     <label className={labelClass}>جانبي - جهة الجيران (م){requiredStar}</label>
                     <input type="number" min="0" step="0.1" value={setbackSide}
                       onChange={e => setSetbackSide(e.target.value)}
+                      onBlur={blurHandler("setbackSide")}
                       placeholder="0.0" className={showError("setbackSide") ? inputErrorClass : inputClass} />
                     {showError("setbackSide") && <p className={errorMsgClass}>{errors.setbackSide}</p>}
                   </div>
@@ -391,6 +413,7 @@ export default function Home() {
                     <label className={labelClass}>خلفي (م){requiredStar}</label>
                     <input type="number" min="0" step="0.1" value={setbackBack}
                       onChange={e => setSetbackBack(e.target.value)}
+                      onBlur={blurHandler("setbackBack")}
                       placeholder="0.0" className={showError("setbackBack") ? inputErrorClass : inputClass} />
                     {showError("setbackBack") && <p className={errorMsgClass}>{errors.setbackBack}</p>}
                   </div>
@@ -425,6 +448,7 @@ export default function Home() {
                     <label className={labelClass}>عدد غرف النوم{requiredStar}</label>
                     <input type="number" min="1" step="1" value={bedroomCount}
                       onChange={e => setBedroomCount(e.target.value)}
+                      onBlur={blurHandler("bedroomCount")}
                       placeholder="مثال: 4"
                       className={showError("bedroomCount") ? inputErrorClass : inputClass} />
                     {showError("bedroomCount") && <p className={errorMsgClass}>{errors.bedroomCount}</p>}
@@ -434,6 +458,7 @@ export default function Home() {
                     <select
                       value={formData.kitchenType ?? ""}
                       onChange={e => setFormData({ ...formData, kitchenType: e.target.value as CreateArchitectureSessionBody["kitchenType"] || undefined })}
+                      onBlur={blurHandler("kitchenType")}
                       className={showError("kitchenType") ? selectErrorClass : selectClass}
                     >
                       <option value="">— اختر —</option>
@@ -448,6 +473,7 @@ export default function Home() {
                     <select
                       value={formData.stairLocation ?? ""}
                       onChange={e => setFormData({ ...formData, stairLocation: e.target.value as CreateArchitectureSessionBody["stairLocation"] || undefined })}
+                      onBlur={blurHandler("stairLocation")}
                       className={showError("stairLocation") ? selectErrorClass : selectClass}
                     >
                       <option value="">— اختر —</option>
@@ -468,6 +494,7 @@ export default function Home() {
                     <select
                       value={formData.facadeDirection ?? ""}
                       onChange={e => setFormData({ ...formData, facadeDirection: e.target.value as CreateArchitectureSessionBody["facadeDirection"] || undefined })}
+                      onBlur={blurHandler("facadeDirection")}
                       className={showError("facadeDirection") ? selectErrorClass : selectClass}
                     >
                       <option value="">— اختر —</option>
@@ -482,6 +509,7 @@ export default function Home() {
                     <select
                       value={formData.acType ?? ""}
                       onChange={e => setFormData({ ...formData, acType: e.target.value as CreateArchitectureSessionBody["acType"] || undefined })}
+                      onBlur={blurHandler("acType")}
                       className={showError("acType") ? selectErrorClass : selectClass}
                     >
                       <option value="">— اختر —</option>
@@ -495,6 +523,7 @@ export default function Home() {
                     <label className={labelClass}>فارق المنسوب عن الشارع (سم){requiredStar}</label>
                     <input type="number" step="1" value={groundLevelDiff}
                       onChange={e => setGroundLevelDiff(e.target.value)}
+                      onBlur={blurHandler("groundLevelDiff")}
                       placeholder="مثال: 30"
                       className={showError("groundLevelDiff") ? inputErrorClass : inputClass} />
                     {showError("groundLevelDiff") && <p className={errorMsgClass}>{errors.groundLevelDiff}</p>}
