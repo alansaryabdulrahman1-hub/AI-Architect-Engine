@@ -46,6 +46,9 @@ export function useGenerateArchitecturePlan() {
             try {
               const parsed = JSON.parse(dataStr);
               if (parsed.done) {
+                if (parsed.error) {
+                  throw new Error(parsed.error as string);
+                }
                 if (parsed.sessionId != null) {
                   sessionId = parsed.sessionId as number;
                 }
@@ -105,7 +108,8 @@ export function useArchitectureFollowup() {
       if (!reader) throw new Error("No readable stream available");
 
       let buffer = "";
-      while (true) {
+      let followupDone = false;
+      while (!followupDone) {
         const { done, value } = await reader.read();
         if (done) break;
         
@@ -118,15 +122,23 @@ export function useArchitectureFollowup() {
             const dataStr = line.slice(6).trim();
             if (!dataStr || dataStr === "[DONE]") continue;
             
+            let parsed: Record<string, unknown>;
             try {
-              const parsed = JSON.parse(dataStr);
-              if (parsed.done) break;
-              if (parsed.content) {
-                fullText += parsed.content;
-                setAnswerStream(fullText);
+              parsed = JSON.parse(dataStr) as Record<string, unknown>;
+            } catch {
+              continue;
+            }
+
+            if (parsed.done) {
+              if (parsed.error) {
+                throw new Error(parsed.error as string);
               }
-            } catch (e) {
-              // Ignore parse errors on partial chunks
+              followupDone = true;
+              break;
+            }
+            if (parsed.content) {
+              fullText += parsed.content as string;
+              setAnswerStream(fullText);
             }
           }
         }

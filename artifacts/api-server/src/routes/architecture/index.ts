@@ -76,9 +76,16 @@ router.get("/sessions", async (req, res) => {
 });
 
 router.post("/sessions", async (req, res) => {
-  try {
-    const body = CreateArchitectureSessionBody.parse(req.body);
+  let streamStarted = false;
 
+  const parseResult = CreateArchitectureSessionBody.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({ error: "Invalid request body", details: parseResult.error.issues });
+    return;
+  }
+  const body = parseResult.data;
+
+  try {
     const titleMap: Record<string, string> = {
       villa: "فيلا",
       townhouse: "تاون هاوس",
@@ -95,7 +102,7 @@ router.post("/sessions", async (req, res) => {
       .values({ title: conversationTitle })
       .returning();
 
-    const systemMessage = buildArchitecturePrompt(
+    const systemPrompt = buildArchitecturePrompt(
       body.buildingType,
       body.buildingSubtype,
       body.area,
@@ -105,20 +112,21 @@ router.post("/sessions", async (req, res) => {
 
     await db.insert(messages).values({
       conversationId: conversation.id,
-      role: "user",
-      content: systemMessage,
+      role: "system",
+      content: systemPrompt,
     });
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    streamStarted = true;
 
     let fullPlan = "";
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 8192,
-      messages: [{ role: "user", content: systemMessage }],
+      messages: [{ role: "user", content: systemPrompt }],
       stream: true,
     });
 
@@ -153,8 +161,12 @@ router.post("/sessions", async (req, res) => {
     res.end();
   } catch (err) {
     req.log.error({ err }, "Failed to create architecture session");
-    res.write(`data: ${JSON.stringify({ error: "Failed to generate architecture plan" })}\n\n`);
-    res.end();
+    if (streamStarted) {
+      res.write(`data: ${JSON.stringify({ done: true, error: "Failed to generate architecture plan" })}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json({ error: "Failed to generate architecture plan" });
+    }
   }
 });
 
@@ -206,9 +218,17 @@ router.delete("/sessions/:id", async (req, res) => {
 });
 
 router.post("/sessions/:id/followup", async (req, res) => {
+  let streamStarted = false;
+
+  const parseResult = SendArchitectureFollowupBody.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({ error: "Invalid request body", details: parseResult.error.issues });
+    return;
+  }
+  const body = parseResult.data;
+
   try {
     const id = parseInt(req.params.id);
-    const body = SendArchitectureFollowupBody.parse(req.body);
 
     const [session] = await db
       .select()
@@ -231,14 +251,16 @@ router.post("/sessions/:id/followup", async (req, res) => {
       content: body.question,
     });
 
-    const chatMessages = [
-      ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-      { role: "user" as const, content: body.question },
-    ];
+    const chatMessages = history.map((m) => ({
+      role: m.role as "system" | "user" | "assistant",
+      content: m.content,
+    }));
+    chatMessages.push({ role: "user", content: body.question });
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    streamStarted = true;
 
     let fullResponse = "";
 
@@ -267,8 +289,12 @@ router.post("/sessions/:id/followup", async (req, res) => {
     res.end();
   } catch (err) {
     req.log.error({ err }, "Failed to process followup question");
-    res.write(`data: ${JSON.stringify({ error: "Failed to process question" })}\n\n`);
-    res.end();
+    if (streamStarted) {
+      res.write(`data: ${JSON.stringify({ done: true, error: "Failed to process question" })}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json({ error: "Failed to process question" });
+    }
   }
 });
 
