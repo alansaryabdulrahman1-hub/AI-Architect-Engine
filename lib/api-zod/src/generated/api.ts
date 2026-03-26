@@ -14,3 +14,153 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List all conversations
+ */
+export const ListOpenaiConversationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListOpenaiConversationsResponse = zod.array(
+  ListOpenaiConversationsResponseItem,
+);
+
+/**
+ * @summary Create a new conversation
+ */
+export const CreateOpenaiConversationBody = zod.object({
+  title: zod.string(),
+});
+
+/**
+ * @summary Get conversation with messages
+ */
+export const GetOpenaiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOpenaiConversationResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      conversationId: zod.number(),
+      role: zod.string(),
+      content: zod.string(),
+      createdAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteOpenaiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListOpenaiMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListOpenaiMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  role: zod.string(),
+  content: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListOpenaiMessagesResponse = zod.array(
+  ListOpenaiMessagesResponseItem,
+);
+
+/**
+ * @summary Send a text message and receive a streaming text response
+ */
+export const SendOpenaiMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendOpenaiMessageBody = zod.object({
+  content: zod.string(),
+});
+
+/**
+ * @summary List all architecture planning sessions
+ */
+export const ListArchitectureSessionsResponseItem = zod.object({
+  id: zod.number(),
+  buildingType: zod.string(),
+  buildingSubtype: zod.string(),
+  area: zod.number(),
+  floors: zod.number(),
+  additionalRequirements: zod.string().optional(),
+  generatedPlan: zod.string(),
+  conversationId: zod.number(),
+  createdAt: zod.date(),
+});
+export const ListArchitectureSessionsResponse = zod.array(
+  ListArchitectureSessionsResponseItem,
+);
+
+/**
+ * @summary Create a new architecture planning session and get AI-generated plan
+ */
+export const CreateArchitectureSessionBody = zod.object({
+  buildingType: zod.enum([
+    "villa",
+    "townhouse",
+    "apartment",
+    "offices",
+    "shop",
+    "other",
+  ]),
+  buildingSubtype: zod.string(),
+  area: zod.number(),
+  floors: zod.number(),
+  additionalRequirements: zod.string().optional(),
+});
+
+/**
+ * @summary Get a specific architecture session
+ */
+export const GetArchitectureSessionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetArchitectureSessionResponse = zod.object({
+  id: zod.number(),
+  buildingType: zod.string(),
+  buildingSubtype: zod.string(),
+  area: zod.number(),
+  floors: zod.number(),
+  additionalRequirements: zod.string().optional(),
+  generatedPlan: zod.string(),
+  conversationId: zod.number(),
+  createdAt: zod.date(),
+});
+
+/**
+ * @summary Delete an architecture session
+ */
+export const DeleteArchitectureSessionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Send a follow-up question about an architecture session
+ */
+export const SendArchitectureFollowupParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendArchitectureFollowupBody = zod.object({
+  question: zod.string(),
+});

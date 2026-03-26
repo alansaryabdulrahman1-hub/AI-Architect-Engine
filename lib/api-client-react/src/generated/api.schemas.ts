@@ -8,3 +8,72 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface OpenaiConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface OpenaiMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreateOpenaiConversationBody {
+  title: string;
+}
+
+export interface SendOpenaiMessageBody {
+  content: string;
+}
+
+export interface OpenaiConversationWithMessages {
+  id: number;
+  title: string;
+  createdAt: string;
+  messages: OpenaiMessage[];
+}
+
+export interface OpenaiError {
+  error: string;
+}
+
+export interface ArchitectureSession {
+  id: number;
+  buildingType: string;
+  buildingSubtype: string;
+  area: number;
+  floors: number;
+  additionalRequirements?: string;
+  generatedPlan: string;
+  conversationId: number;
+  createdAt: string;
+}
+
+export type CreateArchitectureSessionBodyBuildingType =
+  (typeof CreateArchitectureSessionBodyBuildingType)[keyof typeof CreateArchitectureSessionBodyBuildingType];
+
+export const CreateArchitectureSessionBodyBuildingType = {
+  villa: "villa",
+  townhouse: "townhouse",
+  apartment: "apartment",
+  offices: "offices",
+  shop: "shop",
+  other: "other",
+} as const;
+
+export interface CreateArchitectureSessionBody {
+  buildingType: CreateArchitectureSessionBodyBuildingType;
+  buildingSubtype: string;
+  area: number;
+  floors: number;
+  additionalRequirements?: string;
+}
+
+export interface ArchitectureFollowupBody {
+  question: string;
+}

@@ -1,0 +1,17 @@
+packages:
+  "framer-motion": "For fluid page transitions and streaming text animations"
+  "react-markdown": "To render the AI-generated markdown architecture plans"
+  "remark-gfm": "To support markdown tables and lists"
+  "date-fns": "For formatting session dates"
+  "clsx": "Utility for Tailwind class merging"
+  "tailwind-merge": "Utility for Tailwind class merging"
+
+images:
+  - path: "artifacts/arch-planner/public/images/hero-bg.png"
+    description: "Abstract minimal dark architectural wireframe glowing with subtle teal and blue AI neural network lines, premium modern tech aesthetic, very dark background"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using standard SSE fetching for endpoints returning text/event-stream
+  - Arabic language layout defaults to RTL direction
+  - Using generated hooks from @workspace/api-client-react for standard REST endpoints

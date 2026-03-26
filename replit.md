@@ -2,7 +2,7 @@
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+pnpm workspace monorepo using TypeScript. This is an AI-powered architectural planning engine ("مخطط AI") that helps users generate detailed architectural floor plans using OpenAI.
 
 ## Stack
 
@@ -15,82 +15,99 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **AI**: OpenAI via Replit AI Integrations (gpt-5.2, streaming SSE)
+- **Frontend**: React + Vite, Tailwind CSS v4, RTL Arabic UI, react-markdown, framer-motion
+
+## Architecture (مخطط AI)
+
+The app allows users to enter building details (type, subtype, area, floors, extra requirements) and generates a detailed AI architectural plan via streaming SSE.
+
+- `artifacts/arch-planner/` — React+Vite frontend (RTL Arabic UI, dark theme)
+- `artifacts/api-server/` — Express API server with AI routes
+- `lib/integrations-openai-ai-server/` — OpenAI integration (gpt-5.2 streaming)
+- `lib/db/src/schema/architecture_sessions.ts` — Architecture sessions table
+- `lib/db/src/schema/conversations.ts` — Conversations table
+- `lib/db/src/schema/messages.ts` — Messages table
 
 ## Structure
 
 ```text
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+│   ├── api-server/         # Express API server
+│   └── arch-planner/       # AI Architecture Planner frontend
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
+│   ├── db/                 # Drizzle ORM schema + DB connection
+│   ├── integrations-openai-ai-server/ # OpenAI server-side integration
+│   └── integrations-openai-ai-react/  # OpenAI React hooks
+├── scripts/                # Utility scripts
+├── pnpm-workspace.yaml     # pnpm workspace
+├── tsconfig.base.json      # Shared TS options
 ├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+└── package.json            # Root package
 ```
+
+## API Endpoints
+
+All routes under `/api`:
+
+- `GET /api/healthz` — Health check
+- `GET /api/architecture/sessions` — List all planning sessions
+- `POST /api/architecture/sessions` — Create session + stream AI plan (SSE)
+- `GET /api/architecture/sessions/:id` — Get session
+- `DELETE /api/architecture/sessions/:id` — Delete session
+- `POST /api/architecture/sessions/:id/followup` — Follow-up question (SSE stream)
+- `GET /api/openai/conversations` — List conversations
+- `POST /api/openai/conversations` — Create conversation
+- `GET /api/openai/conversations/:id` — Get conversation with messages
+- `GET /api/openai/conversations/:id/messages` — List messages
 
 ## TypeScript & Composite Projects
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
-
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all lib packages as project references.
 
 ## Root Scripts
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
+- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 
 ## Packages
 
+### `artifacts/arch-planner` (`@workspace/arch-planner`)
+
+React+Vite frontend with full RTL Arabic support. Dark professional theme inspired by modern AI tools.
+
+- Sidebar with session history
+- Form for building type, subtype, area, floors, and extra requirements
+- Real-time streaming AI plan generation
+- Session view with the generated architectural plan + follow-up chat
+
 ### `artifacts/api-server` (`@workspace/api-server`)
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+Express 5 API server.
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+- Routes: `/api/architecture/` and `/api/openai/` — see API Endpoints above
+- Uses `@workspace/integrations-openai-ai-server` for OpenAI gpt-5.2 streaming
+- Uses `@workspace/db` for data persistence
 
 ### `lib/db` (`@workspace/db`)
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
-
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
-
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`.
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
+OpenAPI 3.1 spec + Orval codegen. Run: `pnpm --filter @workspace/api-spec run codegen`
 
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
+### `lib/integrations-openai-ai-server` (`@workspace/integrations-openai-ai-server`)
 
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
+Server-side OpenAI integration with pre-configured client. Uses `AI_INTEGRATIONS_OPENAI_BASE_URL` and `AI_INTEGRATIONS_OPENAI_API_KEY` env vars (set by Replit).
 
-### `lib/api-zod` (`@workspace/api-zod`)
+## Environment Variables
 
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+- `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` — PostgreSQL (auto-set by Replit)
+- `AI_INTEGRATIONS_OPENAI_BASE_URL` — OpenAI proxy URL (auto-set by Replit AI Integrations)
+- `AI_INTEGRATIONS_OPENAI_API_KEY` — OpenAI API key (auto-set by Replit AI Integrations)
+- `PORT` — Service port (auto-set per artifact)

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "مخطط معماري AI"
+version = "1.0.0"
+id = "artifacts/arch-planner"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20436
+
+[services.development]
+run = "pnpm --filter @workspace/arch-planner run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/arch-planner", "run", "build" ]
+publicDir = "artifacts/arch-planner/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20436"
+BASE_PATH = "/"

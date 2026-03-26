@@ -6,4 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./architectureFollowupBody";
+export * from "./architectureSession";
+export * from "./createArchitectureSessionBody";
+export * from "./createArchitectureSessionBodyBuildingType";
+export * from "./createOpenaiConversationBody";
 export * from "./healthStatus";
+export * from "./openaiConversation";
+export * from "./openaiConversationWithMessages";
+export * from "./openaiError";
+export * from "./openaiMessage";
+export * from "./sendOpenaiMessageBody";
