@@ -90,9 +90,9 @@ React+Vite frontend with full RTL Arabic support. Dark professional theme inspir
 - Arabic validation errors, area overflow blocking, irregular plot alert
 - Image upload support (sketches, site photos, design references) — up to 5 images, converted to base64
 - Real-time streaming AI plan generation with vision-capable image analysis
-- Session view with chat layout: AI plan at top, sticky input at bottom, follow-up messages in between
-- AI-generated image cards: 2D floor plan + 3D exterior view (DALL-E 3), with loading/error states
-- DXF download button for AutoCAD-compatible file export (parses coordinates from AI plan)
+- Session view with layout: User Summary → AI Plan → Image Previews → Discussion → Sticky Chat Input
+- AI-generated image cards: 2D floor plan + 3D exterior view (DALL-E 3), with coordinate-aware prompts and loading/error states
+- DXF download: AutoCAD-compatible export with ASCII-safe labels (Arabic→English transliteration), ACADVER/INSUNITS/MEASUREMENT headers, proper layer structure
 - Code block copy buttons for AutoLISP scripts
 
 ### `artifacts/api-server` (`@workspace/api-server`)

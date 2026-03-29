@@ -602,6 +602,72 @@ function getLayerForElement(element: string): string {
   return "WALLS";
 }
 
+const ARABIC_TO_ENGLISH_LABELS: [RegExp, string][] = [
+  [/جدار\s*خارجي\s*(?:شمالي|شمال)/i, "Ext Wall North"],
+  [/جدار\s*خارجي\s*(?:جنوبي|جنوب)/i, "Ext Wall South"],
+  [/جدار\s*خارجي\s*(?:شرقي|شرق)/i, "Ext Wall East"],
+  [/جدار\s*خارجي\s*(?:غربي|غرب)/i, "Ext Wall West"],
+  [/جدار\s*خارجي/i, "Ext Wall"],
+  [/جدار\s*داخلي/i, "Int Wall"],
+  [/جدار/i, "Wall"],
+  [/باب\s*(?:رئيسي|أمامي|مدخل)/i, "Main Door"],
+  [/باب/i, "Door"],
+  [/نافذة|شباك/i, "Window"],
+  [/درج|سلم/i, "Stairs"],
+  [/مصعد/i, "Elevator"],
+  [/غرفة?\s*نوم\s*(?:رئيسية|ماستر)/i, "Master Bedroom"],
+  [/غرفة?\s*نوم/i, "Bedroom"],
+  [/غرفة?\s*(?:معيشة|جلوس)/i, "Living Room"],
+  [/صالة/i, "Hall"],
+  [/مطبخ/i, "Kitchen"],
+  [/حمام|دورة?\s*مياه/i, "Bathroom"],
+  [/مجلس\s*نساء/i, "Ladies Majlis"],
+  [/مجلس\s*(?:رجال)?/i, "Majlis"],
+  [/مدخل/i, "Entrance"],
+  [/كراج|جراج|موقف/i, "Garage"],
+  [/مخزن|مستودع/i, "Storage"],
+  [/غرفة?\s*خادمة/i, "Maid Room"],
+  [/غرفة?\s*غسيل/i, "Laundry"],
+  [/ممر|رواق/i, "Corridor"],
+  [/شرفة|بلكونة/i, "Balcony"],
+  [/حديقة|فناء/i, "Garden"],
+];
+
+function transliterateLabel(arabic: string): string {
+  for (const [pattern, eng] of ARABIC_TO_ENGLISH_LABELS) {
+    if (pattern.test(arabic)) return eng;
+  }
+  if (/[\u0600-\u06FF]/.test(arabic)) {
+    return arabic.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+/g, "Element").trim() || "Element";
+  }
+  return arabic;
+}
+
+function injectDxfHeaders(dxfStr: string): string {
+  const headerInsertionPoint = dxfStr.indexOf("HEADER");
+  if (headerInsertionPoint !== -1) {
+    const endSecIndex = dxfStr.indexOf("ENDSEC", headerInsertionPoint);
+    if (endSecIndex !== -1) {
+      const acadverBlock = [
+        "  9",
+        "$ACADVER",
+        "  1",
+        "AC1027",
+        "  9",
+        "$INSUNITS",
+        " 70",
+        "     6",
+        "  9",
+        "$MEASUREMENT",
+        " 70",
+        "     1",
+      ].join("\n");
+      dxfStr = dxfStr.slice(0, endSecIndex) + acadverBlock + "\n" + dxfStr.slice(endSecIndex);
+    }
+  }
+  return dxfStr;
+}
+
 function generateDxf(rows: CoordinateRow[]): string {
   const d = new Drawing();
   d.setUnits("Meters");
@@ -643,12 +709,13 @@ function generateDxf(rows: CoordinateRow[]): string {
     if (!labeled.has(row.element)) {
       const cx = (row.startX + row.endX) / 2;
       const cy = (row.startY + row.endY) / 2;
-      d.drawText(cx, cy - 0.3, 0.25, 0, row.element);
+      const label = transliterateLabel(row.element);
+      d.drawText(cx, cy - 0.3, 0.25, 0, label);
       labeled.add(row.element);
     }
   }
 
-  return d.toDxfString();
+  return injectDxfHeaders(d.toDxfString());
 }
 
 function extractRoomSummary(planText: string): string {
@@ -687,23 +754,36 @@ async function generateSessionImages(
   const windowCount = coordinates.filter(r => getLayerForElement(r.element) === "WINDOWS").length;
   const roomSummary = extractRoomSummary(planText);
 
-  const coordsDetail = coordinates.length > 0
-    ? ` The plan has ${wallCount} wall segments, ${doorCount} doors, and ${windowCount} windows.`
+  const roomLabels = [...new Set(coordinates.map(r => transliterateLabel(r.element)))].filter(l => l !== "Element");
+  const roomPositions = coordinates.slice(0, 12).map(r => {
+    const label = transliterateLabel(r.element);
+    const cx = ((r.startX + r.endX) / 2).toFixed(1);
+    const cy = ((r.startY + r.endY) / 2).toFixed(1);
+    return `${label} at (${cx},${cy})`;
+  });
+
+  const layoutDescription = roomPositions.length > 0
+    ? ` Layout positions: ${roomPositions.join("; ")}.`
     : "";
-  const roomDetail = roomSummary ? ` Rooms include: ${roomSummary}.` : "";
+  const roomsListed = roomLabels.length > 0
+    ? ` Rooms: ${roomLabels.join(", ")}.`
+    : (roomSummary ? ` Rooms include: ${roomSummary}.` : "");
+  const elemCounts = coordinates.length > 0
+    ? ` ${wallCount} wall segments, ${doorCount} doors, ${windowCount} windows.`
+    : "";
 
   try {
     const [floorPlanResult, exteriorResult] = await Promise.allSettled([
       openai.images.generate({
         model: "dall-e-3",
-        prompt: `Professional 2D architectural floor plan, top-down view, clean blueprint style with white lines on dark blue background. Building type: ${typeLabel} - ${session.buildingSubtype}. Plot dimensions: ${avgWidth.toFixed(1)}m x ${avgDepth.toFixed(1)}m, total area ${session.area}m².${coordsDetail}${roomDetail} Show room layouts, walls, doors, windows, and room labels. Minimalist technical drawing style.`,
+        prompt: `Professional 2D architectural floor plan, top-down orthographic view, clean blueprint style with white lines on dark blue background. Building type: ${typeLabel} - ${session.buildingSubtype}. Plot dimensions: ${avgWidth.toFixed(1)}m wide x ${avgDepth.toFixed(1)}m deep, total area ${session.area}m².${elemCounts}${roomsListed}${layoutDescription} Show all rooms with labeled names, wall thicknesses, door swings, and window openings. Precise technical CAD drawing style with dimensions annotated.`,
         n: 1,
         size: "1024x1024",
         quality: "standard",
       }),
       openai.images.generate({
         model: "dall-e-3",
-        prompt: `Professional 3D exterior architectural rendering of a modern ${typeLabel} - ${session.buildingSubtype}. Facade facing ${facadeLabel}. Building footprint ${avgWidth.toFixed(1)}m x ${avgDepth.toFixed(1)}m.${doorCount > 0 ? ` Main entrance with ${doorCount} door openings visible.` : ""}${windowCount > 0 ? ` ${windowCount} windows on the facade.` : ""} Contemporary Middle Eastern architectural style with clean geometric forms, natural stone and white plaster finish. Landscape with desert-adapted plants. Golden hour lighting. Photorealistic rendering.`,
+        prompt: `Professional 3D exterior architectural rendering of a modern ${typeLabel} - ${session.buildingSubtype}. Facade facing ${facadeLabel}. Building footprint exactly ${avgWidth.toFixed(1)}m wide x ${avgDepth.toFixed(1)}m deep, total built area ${session.area}m².${doorCount > 0 ? ` Main entrance with ${doorCount} door openings visible.` : ""}${windowCount > 0 ? ` ${windowCount} windows distributed across the facade.` : ""} Contemporary Middle Eastern architectural style with clean geometric forms, natural stone and white plaster finish. Landscape with desert-adapted plants. Golden hour lighting. Photorealistic rendering.`,
         n: 1,
         size: "1024x1024",
         quality: "standard",
@@ -759,9 +839,9 @@ router.get("/sessions/:id/dxf", async (req, res) => {
       d.drawLine(w, h, 0, h);
       d.drawLine(0, h, 0, 0);
 
-      d.drawText(w / 2, h / 2, 0.5, 0, session.buildingSubtype || "Building");
+      d.drawText(w / 2, h / 2, 0.5, 0, transliterateLabel(session.buildingSubtype || "Building"));
 
-      const dxfContent = d.toDxfString();
+      const dxfContent = injectDxfHeaders(d.toDxfString());
       res.setHeader("Content-Type", "application/dxf");
       res.setHeader("Content-Disposition", `attachment; filename="plan-${id}.dxf"`);
       res.send(dxfContent);

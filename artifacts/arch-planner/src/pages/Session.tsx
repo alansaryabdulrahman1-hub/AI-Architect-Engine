@@ -138,33 +138,10 @@ export default function Session() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin">
           <div className="max-w-4xl mx-auto space-y-8 pb-8">
-            
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-panel rounded-3xl p-6 md:p-10 shadow-xl"
-            >
-              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-zinc-800/50">
-                <Bot className="w-6 h-6 text-teal-400" />
-                <h3 className="text-lg font-bold text-zinc-100">المخطط المعماري المقترح</h3>
-              </div>
-              <MarkdownRenderer content={session.generatedPlan} />
-
-              <div className="mt-8 pt-6 border-t border-zinc-800/50">
-                <button
-                  onClick={handleDownloadDxf}
-                  className="flex items-center gap-3 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl transition-colors shadow-lg"
-                >
-                  <Download className="w-5 h-5" />
-                  <span className="font-medium">تحميل ملف أوتوكاد القابل للتعديل (.DXF)</span>
-                </button>
-              </div>
-            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
               className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 md:p-6"
             >
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-indigo-500/10">
@@ -190,6 +167,29 @@ export default function Session() {
                   <span className="text-zinc-500">متطلبات إضافية: </span>{session.additionalRequirements}
                 </div>
               )}
+            </motion.div>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="glass-panel rounded-3xl p-6 md:p-10 shadow-xl"
+            >
+              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-zinc-800/50">
+                <Bot className="w-6 h-6 text-teal-400" />
+                <h3 className="text-lg font-bold text-zinc-100">المخطط المعماري المقترح</h3>
+              </div>
+              <MarkdownRenderer content={session.generatedPlan} />
+
+              <div className="mt-8 pt-6 border-t border-zinc-800/50">
+                <button
+                  onClick={handleDownloadDxf}
+                  className="flex items-center gap-3 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl transition-colors shadow-lg"
+                >
+                  <Download className="w-5 h-5" />
+                  <span className="font-medium">تحميل ملف أوتوكاد القابل للتعديل (.DXF)</span>
+                </button>
+              </div>
             </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
