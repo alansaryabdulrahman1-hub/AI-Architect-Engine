@@ -388,6 +388,36 @@ components:
           type: number
         additionalRequirements:
           type: string
+        isIrregularLand:
+          type: boolean
+        deedNumber:
+          type: string
+        plotNumber:
+          type: string
+        neighborEast:
+          type: string
+          description: Neighbor status on the east boundary (e.g. built, empty, street)
+        neighborEastWindows:
+          type: string
+          description: Window/opening locations on east neighbor boundary when built
+        neighborWest:
+          type: string
+          description: Neighbor status on the west boundary
+        neighborWestWindows:
+          type: string
+          description: Window/opening locations on west neighbor boundary when built
+        neighborSouth:
+          type: string
+          description: Neighbor status on the south boundary
+        neighborSouthWindows:
+          type: string
+          description: Window/opening locations on south neighbor boundary when built
+        soilType:
+          type: string
+          description: Soil type (rocky, sandy, clay, mixed)
+        budgetRange:
+          type: string
+          description: Budget range (low, medium, high, premium)
         generatedPlan:
           type: string
         floorPlanImageUrl:
@@ -436,6 +466,9 @@ components:
         sideWest:
           type: number
           description: West side length of the plot in meters
+        isIrregularLand:
+          type: boolean
+          description: Whether the land has irregular shape
         chordLength:
           type: number
           description: Chord/diagonal length for correcting irregular non-right-angle corners in meters
@@ -448,6 +481,38 @@ components:
         setbackBack:
           type: number
           description: Back setback in meters
+        deedNumber:
+          type: string
+          description: Deed number for the plot
+        plotNumber:
+          type: string
+          description: Plot number
+        neighborEast:
+          type: string
+          description: Neighbor status on the east boundary (e.g. built, empty, street)
+        neighborEastWindows:
+          type: string
+          description: Window/opening locations on east neighbor boundary when built
+        neighborWest:
+          type: string
+          description: Neighbor status on the west boundary
+        neighborWestWindows:
+          type: string
+          description: Window/opening locations on west neighbor boundary when built
+        neighborSouth:
+          type: string
+          description: Neighbor status on the south boundary
+        neighborSouthWindows:
+          type: string
+          description: Window/opening locations on south neighbor boundary when built
+        soilType:
+          type: string
+          enum: [rocky, sandy, clay, mixed]
+          description: Soil type
+        budgetRange:
+          type: string
+          enum: [low, medium, high, premium]
+          description: Budget range
         acType:
           type: string
           enum: [split, concealed, central]
@@ -487,16 +552,9 @@ components:
         - sideSouth
         - sideEast
         - sideWest
-        - chordLength
         - setbackFront
         - setbackSide
         - setbackBack
-        - acType
-        - facadeDirection
-        - stairLocation
-        - bedroomCount
-        - kitchenType
-        - groundLevelDifference
     ArchitectureFollowupBody:
       type: object
       properties:

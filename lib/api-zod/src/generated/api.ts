@@ -116,6 +116,45 @@ export const ListArchitectureSessionsResponseItem = zod.object({
   kitchenType: zod.string().optional(),
   groundLevelDifference: zod.number().optional(),
   additionalRequirements: zod.string().optional(),
+  isIrregularLand: zod.boolean().optional(),
+  deedNumber: zod.string().optional(),
+  plotNumber: zod.string().optional(),
+  neighborEast: zod
+    .string()
+    .optional()
+    .describe(
+      "Neighbor status on the east boundary (e.g. built, empty, street)",
+    ),
+  neighborEastWindows: zod
+    .string()
+    .optional()
+    .describe("Window\/opening locations on east neighbor boundary when built"),
+  neighborWest: zod
+    .string()
+    .optional()
+    .describe("Neighbor status on the west boundary"),
+  neighborWestWindows: zod
+    .string()
+    .optional()
+    .describe("Window\/opening locations on west neighbor boundary when built"),
+  neighborSouth: zod
+    .string()
+    .optional()
+    .describe("Neighbor status on the south boundary"),
+  neighborSouthWindows: zod
+    .string()
+    .optional()
+    .describe(
+      "Window\/opening locations on south neighbor boundary when built",
+    ),
+  soilType: zod
+    .string()
+    .optional()
+    .describe("Soil type (rocky, sandy, clay, mixed)"),
+  budgetRange: zod
+    .string()
+    .optional()
+    .describe("Budget range (low, medium, high, premium)"),
   generatedPlan: zod.string(),
   floorPlanImageUrl: zod.string().nullish(),
   exteriorImageUrl: zod.string().nullish(),
@@ -148,27 +187,78 @@ export const CreateArchitectureSessionBody = zod.object({
   sideSouth: zod.number().describe("South side length of the plot in meters"),
   sideEast: zod.number().describe("East side length of the plot in meters"),
   sideWest: zod.number().describe("West side length of the plot in meters"),
+  isIrregularLand: zod
+    .boolean()
+    .optional()
+    .describe("Whether the land has irregular shape"),
   chordLength: zod
     .number()
+    .optional()
     .describe(
       "Chord\/diagonal length for correcting irregular non-right-angle corners in meters",
     ),
   setbackFront: zod.number().describe("Front setback in meters (street side)"),
   setbackSide: zod.number().describe("Side setback in meters (neighbor side)"),
   setbackBack: zod.number().describe("Back setback in meters"),
+  deedNumber: zod.string().optional().describe("Deed number for the plot"),
+  plotNumber: zod.string().optional().describe("Plot number"),
+  neighborEast: zod
+    .string()
+    .optional()
+    .describe(
+      "Neighbor status on the east boundary (e.g. built, empty, street)",
+    ),
+  neighborEastWindows: zod
+    .string()
+    .optional()
+    .describe("Window\/opening locations on east neighbor boundary when built"),
+  neighborWest: zod
+    .string()
+    .optional()
+    .describe("Neighbor status on the west boundary"),
+  neighborWestWindows: zod
+    .string()
+    .optional()
+    .describe("Window\/opening locations on west neighbor boundary when built"),
+  neighborSouth: zod
+    .string()
+    .optional()
+    .describe("Neighbor status on the south boundary"),
+  neighborSouthWindows: zod
+    .string()
+    .optional()
+    .describe(
+      "Window\/opening locations on south neighbor boundary when built",
+    ),
+  soilType: zod
+    .enum(["rocky", "sandy", "clay", "mixed"])
+    .optional()
+    .describe("Soil type"),
+  budgetRange: zod
+    .enum(["low", "medium", "high", "premium"])
+    .optional()
+    .describe("Budget range"),
   acType: zod
     .enum(["split", "concealed", "central"])
+    .optional()
     .describe("Air conditioning system type"),
   facadeDirection: zod
     .enum(["north", "south", "east", "west"])
+    .optional()
     .describe("Main facade direction"),
   stairLocation: zod
     .enum(["central", "side", "back"])
+    .optional()
     .describe("Stair and elevator location within the building"),
-  bedroomCount: zod.number().min(1).describe("Number of bedrooms required"),
-  kitchenType: zod.enum(["open", "closed"]).describe("Kitchen type"),
+  bedroomCount: zod
+    .number()
+    .min(1)
+    .optional()
+    .describe("Number of bedrooms required"),
+  kitchenType: zod.enum(["open", "closed"]).optional().describe("Kitchen type"),
   groundLevelDifference: zod
     .number()
+    .optional()
     .describe("Ground level difference from street in centimeters"),
   additionalRequirements: zod.string().optional(),
   images: zod
@@ -207,6 +297,45 @@ export const GetArchitectureSessionResponse = zod.object({
   kitchenType: zod.string().optional(),
   groundLevelDifference: zod.number().optional(),
   additionalRequirements: zod.string().optional(),
+  isIrregularLand: zod.boolean().optional(),
+  deedNumber: zod.string().optional(),
+  plotNumber: zod.string().optional(),
+  neighborEast: zod
+    .string()
+    .optional()
+    .describe(
+      "Neighbor status on the east boundary (e.g. built, empty, street)",
+    ),
+  neighborEastWindows: zod
+    .string()
+    .optional()
+    .describe("Window\/opening locations on east neighbor boundary when built"),
+  neighborWest: zod
+    .string()
+    .optional()
+    .describe("Neighbor status on the west boundary"),
+  neighborWestWindows: zod
+    .string()
+    .optional()
+    .describe("Window\/opening locations on west neighbor boundary when built"),
+  neighborSouth: zod
+    .string()
+    .optional()
+    .describe("Neighbor status on the south boundary"),
+  neighborSouthWindows: zod
+    .string()
+    .optional()
+    .describe(
+      "Window\/opening locations on south neighbor boundary when built",
+    ),
+  soilType: zod
+    .string()
+    .optional()
+    .describe("Soil type (rocky, sandy, clay, mixed)"),
+  budgetRange: zod
+    .string()
+    .optional()
+    .describe("Budget range (low, medium, high, premium)"),
   generatedPlan: zod.string(),
   floorPlanImageUrl: zod.string().nullish(),
   exteriorImageUrl: zod.string().nullish(),

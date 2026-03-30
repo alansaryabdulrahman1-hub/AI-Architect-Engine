@@ -27,6 +27,25 @@ export interface ArchitectureSession {
   kitchenType?: string;
   groundLevelDifference?: number;
   additionalRequirements?: string;
+  isIrregularLand?: boolean;
+  deedNumber?: string;
+  plotNumber?: string;
+  /** Neighbor status on the east boundary (e.g. built, empty, street) */
+  neighborEast?: string;
+  /** Window/opening locations on east neighbor boundary when built */
+  neighborEastWindows?: string;
+  /** Neighbor status on the west boundary */
+  neighborWest?: string;
+  /** Window/opening locations on west neighbor boundary when built */
+  neighborWestWindows?: string;
+  /** Neighbor status on the south boundary */
+  neighborSouth?: string;
+  /** Window/opening locations on south neighbor boundary when built */
+  neighborSouthWindows?: string;
+  /** Soil type (rocky, sandy, clay, mixed) */
+  soilType?: string;
+  /** Budget range (low, medium, high, premium) */
+  budgetRange?: string;
   generatedPlan: string;
   floorPlanImageUrl?: string | null;
   exteriorImageUrl?: string | null;

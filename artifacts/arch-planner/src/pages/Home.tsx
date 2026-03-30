@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, Sparkles, Loader2, AlertTriangle, Info } from "lucide-react";
+import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, Sparkles, Loader2, AlertTriangle, Info, ChevronDown, ChevronUp, MapPin, Landmark, Users } from "lucide-react";
 import { useGenerateArchitecturePlan } from "@/hooks/use-architecture-stream";
 import {
   type CreateArchitectureSessionBody,
@@ -12,6 +12,8 @@ import {
   CreateArchitectureSessionBodyFacadeDirection as FacadeDirectionEnum,
   CreateArchitectureSessionBodyStairLocation as StairLocationEnum,
   CreateArchitectureSessionBodyKitchenType as KitchenTypeEnum,
+  CreateArchitectureSessionBodySoilType as SoilTypeEnum,
+  CreateArchitectureSessionBodyBudgetRange as BudgetRangeEnum,
 } from "@workspace/api-client-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -61,6 +63,27 @@ const KITCHEN_TYPE_OPTIONS = [
   { value: KitchenTypeEnum.closed, label: "مغلق" },
 ];
 
+const SOIL_TYPE_OPTIONS = [
+  { value: SoilTypeEnum.rocky, label: "صخري" },
+  { value: SoilTypeEnum.sandy, label: "رملي" },
+  { value: SoilTypeEnum.clay, label: "طيني" },
+  { value: SoilTypeEnum.mixed, label: "مختلط" },
+];
+
+const BUDGET_RANGE_OPTIONS = [
+  { value: BudgetRangeEnum.low, label: "منخفض" },
+  { value: BudgetRangeEnum.medium, label: "متوسط" },
+  { value: BudgetRangeEnum.high, label: "مرتفع" },
+  { value: BudgetRangeEnum.premium, label: "فاخر" },
+];
+
+const NEIGHBOR_STATUS_OPTIONS = [
+  { value: "built", label: "مبني" },
+  { value: "empty", label: "فارغ" },
+  { value: "street", label: "شارع" },
+  { value: "garden", label: "حديقة" },
+];
+
 function computeNetBuildableArea(
   sideNorth: number | undefined,
   sideSouth: number | undefined,
@@ -104,6 +127,50 @@ const requiredStar = " *";
 
 type ValidationErrors = Record<string, string>;
 
+function CollapsibleSection({ title, icon: Icon, iconColor, children, defaultOpen = false, badge }: {
+  title: string;
+  icon: React.ElementType;
+  iconColor: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  badge?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-zinc-800 rounded-2xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-5 py-4 bg-zinc-900/50 hover:bg-zinc-900/80 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+          <span className="text-sm font-bold text-zinc-200">{title}</span>
+          {badge && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400">{badge}</span>
+          )}
+        </div>
+        {isOpen ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="p-5 space-y-6">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { generate, isGenerating, content } = useGenerateArchitecturePlan();
@@ -120,12 +187,15 @@ export default function Home() {
   const [sideSouth, setSideSouth] = useState<string>("");
   const [sideEast, setSideEast] = useState<string>("");
   const [sideWest, setSideWest] = useState<string>("");
+  const [isIrregularLand, setIsIrregularLand] = useState(false);
   const [chordLength, setChordLength] = useState<string>("");
   const [setbackFront, setSetbackFront] = useState<string>("");
   const [setbackSide, setSetbackSide] = useState<string>("");
   const [setbackBack, setSetbackBack] = useState<string>("");
   const [bedroomCount, setBedroomCount] = useState<string>("");
   const [groundLevelDiff, setGroundLevelDiff] = useState<string>("");
+  const [deedNumber, setDeedNumber] = useState<string>("");
+  const [plotNumber, setPlotNumber] = useState<string>("");
 
   const [images, setImages] = useState<string[]>([]);
   const [step, setStep] = useState<"form" | "generating">("form");
@@ -153,6 +223,10 @@ export default function Home() {
   const irregular = useMemo(() => isIrregularPlot(parsedSideNorth, parsedSideSouth, parsedSideEast, parsedSideWest),
     [parsedSideNorth, parsedSideSouth, parsedSideEast, parsedSideWest]);
 
+  useEffect(() => {
+    if (irregular) setIsIrregularLand(true);
+  }, [irregular]);
+
   const totalProgrammedArea = formData.area || 0;
   const floorsCount = FLOORS_COUNT[formData.floors || "ground_first"] || 2;
   const exceedsArea = netBuildableArea != null && totalProgrammedArea > netBuildableArea * floorsCount;
@@ -165,19 +239,13 @@ export default function Home() {
     if (!sideSouth.trim()) e.sideSouth = "هذا الحقل مطلوب";
     if (!sideEast.trim()) e.sideEast = "هذا الحقل مطلوب";
     if (!sideWest.trim()) e.sideWest = "هذا الحقل مطلوب";
-    if (!chordLength.trim()) e.chordLength = "هذا الحقل مطلوب";
+    if (isIrregularLand && !chordLength.trim()) e.chordLength = "هذا الحقل مطلوب للأرض غير المنتظمة";
     if (!setbackFront.trim()) e.setbackFront = "هذا الحقل مطلوب";
     if (!setbackSide.trim()) e.setbackSide = "هذا الحقل مطلوب";
     if (!setbackBack.trim()) e.setbackBack = "هذا الحقل مطلوب";
-    if (!formData.acType) e.acType = "اختر نظام التكييف";
-    if (!formData.facadeDirection) e.facadeDirection = "اختر اتجاه الواجهة";
-    if (!formData.stairLocation) e.stairLocation = "اختر موقع الدرج";
-    if (!formData.kitchenType) e.kitchenType = "اختر نوع المطبخ";
-    if (!bedroomCount.trim() || parseInt(bedroomCount) < 1) e.bedroomCount = "أدخل عدد غرف النوم (1 على الأقل)";
-    if (!groundLevelDiff.trim()) e.groundLevelDiff = "هذا الحقل مطلوب";
     if (exceedsArea) e._area = "المساحة المطلوبة تتجاوز المساحة القابلة للبناء. قلّل المساحة أو زِد عدد الأدوار.";
     return e;
-  }, [formData, sideNorth, sideSouth, sideEast, sideWest, chordLength, setbackFront, setbackSide, setbackBack, bedroomCount, groundLevelDiff, exceedsArea]);
+  }, [formData, sideNorth, sideSouth, sideEast, sideWest, chordLength, setbackFront, setbackSide, setbackBack, groundLevelDiff, exceedsArea, isIrregularLand]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,18 +266,37 @@ export default function Home() {
         sideSouth: parseFloat(sideSouth),
         sideEast: parseFloat(sideEast),
         sideWest: parseFloat(sideWest),
-        chordLength: parseFloat(chordLength),
+        isIrregularLand,
+        chordLength: chordLength ? parseFloat(chordLength) : undefined,
         setbackFront: parseFloat(setbackFront),
         setbackSide: parseFloat(setbackSide),
         setbackBack: parseFloat(setbackBack),
-        acType: formData.acType!,
-        facadeDirection: formData.facadeDirection!,
-        stairLocation: formData.stairLocation!,
-        bedroomCount: parseInt(bedroomCount),
-        kitchenType: formData.kitchenType!,
-        groundLevelDifference: parseFloat(groundLevelDiff),
         additionalRequirements: formData.additionalRequirements || undefined,
       };
+
+      if (deedNumber.trim()) payload.deedNumber = deedNumber.trim();
+      if (plotNumber.trim()) payload.plotNumber = plotNumber.trim();
+      if (formData.neighborEast) {
+        payload.neighborEast = formData.neighborEast;
+        if (formData.neighborEast === "built" && formData.neighborEastWindows) payload.neighborEastWindows = formData.neighborEastWindows;
+      }
+      if (formData.neighborWest) {
+        payload.neighborWest = formData.neighborWest;
+        if (formData.neighborWest === "built" && formData.neighborWestWindows) payload.neighborWestWindows = formData.neighborWestWindows;
+      }
+      if (formData.neighborSouth) {
+        payload.neighborSouth = formData.neighborSouth;
+        if (formData.neighborSouth === "built" && formData.neighborSouthWindows) payload.neighborSouthWindows = formData.neighborSouthWindows;
+      }
+      if (formData.soilType) payload.soilType = formData.soilType;
+      if (formData.budgetRange) payload.budgetRange = formData.budgetRange;
+      if (formData.facadeDirection) payload.facadeDirection = formData.facadeDirection;
+      if (groundLevelDiff.trim()) payload.groundLevelDifference = parseFloat(groundLevelDiff);
+      if (formData.acType) payload.acType = formData.acType;
+      if (formData.stairLocation) payload.stairLocation = formData.stairLocation;
+      if (bedroomCount.trim()) payload.bedroomCount = parseInt(bedroomCount);
+      if (formData.kitchenType) payload.kitchenType = formData.kitchenType;
+
       if (images.length > 0) {
         payload.images = images;
       }
@@ -230,7 +317,7 @@ export default function Home() {
     if (submitted || Object.keys(touched).length > 0) {
       setErrors(validate());
     }
-  }, [formData, sideNorth, sideSouth, sideEast, sideWest, chordLength, setbackFront, setbackSide, setbackBack, bedroomCount, groundLevelDiff, exceedsArea, submitted, touched]);
+  }, [formData, sideNorth, sideSouth, sideEast, sideWest, chordLength, setbackFront, setbackSide, setbackBack, bedroomCount, groundLevelDiff, exceedsArea, submitted, touched, isIrregularLand]);
 
   const showError = (field: string) => (submitted || touched[field]) && errors[field];
 
@@ -259,277 +346,400 @@ export default function Home() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="glass-panel rounded-3xl p-6 md:p-8 space-y-8" noValidate>
+            <form onSubmit={handleSubmit} className="glass-panel rounded-3xl p-6 md:p-8 space-y-6" noValidate>
 
-              <div>
-                <p className={sectionHeaderClass}>نوع المبنى</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {BUILDING_TYPES.map(type => (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, buildingType: type.id })}
-                      className={`
-                        relative flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 overflow-hidden
-                        ${formData.buildingType === type.id
-                          ? 'bg-zinc-800 border-teal-500/50 shadow-[0_0_15px_rgba(20,184,166,0.15)]'
-                          : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800/80 hover:border-zinc-700'}
-                      `}
-                    >
-                      {formData.buildingType === type.id && (
-                        <div className={`absolute inset-0 bg-gradient-to-br ${type.color} opacity-5`}></div>
-                      )}
-                      <type.icon className={`w-6 h-6 mb-3 ${formData.buildingType === type.id ? 'text-teal-400' : 'text-zinc-500'}`} />
-                      <span className={`text-sm font-medium ${formData.buildingType === type.id ? 'text-zinc-100' : 'text-zinc-400'}`}>
-                        {type.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CollapsibleSection title="الهندسة الأساسية (إجباري)" icon={Building2} iconColor="text-teal-400" defaultOpen={true} badge="مطلوب">
                 <div>
-                  <label className={labelClass}>الصنف أو الوصف المختصر{requiredStar}</label>
-                  <input
-                    type="text"
-                    value={formData.buildingSubtype || ""}
-                    onChange={e => setFormData({ ...formData, buildingSubtype: e.target.value })}
-                    onBlur={blurHandler("buildingSubtype")}
-                    placeholder="مثال: فيلا فاخرة بتصميم مودرن"
-                    className={showError("buildingSubtype") ? inputErrorClass : inputClass}
-                  />
-                  {showError("buildingSubtype") && <p className={errorMsgClass}>{errors.buildingSubtype}</p>}
+                  <p className={sectionHeaderClass}>نوع المبنى</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {BUILDING_TYPES.map(type => (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, buildingType: type.id })}
+                        className={`
+                          relative flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 overflow-hidden
+                          ${formData.buildingType === type.id
+                            ? 'bg-zinc-800 border-teal-500/50 shadow-[0_0_15px_rgba(20,184,166,0.15)]'
+                            : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800/80 hover:border-zinc-700'}
+                        `}
+                      >
+                        {formData.buildingType === type.id && (
+                          <div className={`absolute inset-0 bg-gradient-to-br ${type.color} opacity-5`}></div>
+                        )}
+                        <type.icon className={`w-6 h-6 mb-3 ${formData.buildingType === type.id ? 'text-teal-400' : 'text-zinc-500'}`} />
+                        <span className={`text-sm font-medium ${formData.buildingType === type.id ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                          {type.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className={labelClass}>المساحة الإجمالية (م²){requiredStar}</label>
+                    <label className={labelClass}>الصنف أو الوصف المختصر{requiredStar}</label>
                     <input
-                      type="number"
-                      min="10"
-                      value={formData.area || ""}
-                      onChange={e => setFormData({ ...formData, area: parseFloat(e.target.value) || 0 })}
-                      onBlur={blurHandler("area")}
-                      className={showError("area") ? inputErrorClass : inputClass}
+                      type="text"
+                      value={formData.buildingSubtype || ""}
+                      onChange={e => setFormData({ ...formData, buildingSubtype: e.target.value })}
+                      onBlur={blurHandler("buildingSubtype")}
+                      placeholder="مثال: فيلا فاخرة بتصميم مودرن"
+                      className={showError("buildingSubtype") ? inputErrorClass : inputClass}
                     />
-                    {showError("area") && <p className={errorMsgClass}>{errors.area}</p>}
+                    {showError("buildingSubtype") && <p className={errorMsgClass}>{errors.buildingSubtype}</p>}
                   </div>
-                  <div>
-                    <label className={labelClass}>عدد الأدوار{requiredStar}</label>
-                    <select
-                      value={formData.floors || FloorsEnum.ground_first}
-                      onChange={e => setFormData({ ...formData, floors: e.target.value as CreateArchitectureSessionBody["floors"] })}
-                      className={selectClass}
-                    >
-                      {FLOORS_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
 
-              <div>
-                <p className={sectionHeaderClass}>أبعاد الأرض (إجباري){requiredStar}</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <label className={labelClass}>الضلع الشمالي (م){requiredStar}</label>
-                    <input type="number" min="0" step="0.1" value={sideNorth}
-                      onChange={e => setSideNorth(e.target.value)}
-                      onBlur={blurHandler("sideNorth")}
-                      placeholder="0.0" className={showError("sideNorth") ? inputErrorClass : inputClass} />
-                    {showError("sideNorth") && <p className={errorMsgClass}>{errors.sideNorth}</p>}
-                  </div>
-                  <div>
-                    <label className={labelClass}>الضلع الجنوبي (م){requiredStar}</label>
-                    <input type="number" min="0" step="0.1" value={sideSouth}
-                      onChange={e => setSideSouth(e.target.value)}
-                      onBlur={blurHandler("sideSouth")}
-                      placeholder="0.0" className={showError("sideSouth") ? inputErrorClass : inputClass} />
-                    {showError("sideSouth") && <p className={errorMsgClass}>{errors.sideSouth}</p>}
-                  </div>
-                  <div>
-                    <label className={labelClass}>الضلع الشرقي (م){requiredStar}</label>
-                    <input type="number" min="0" step="0.1" value={sideEast}
-                      onChange={e => setSideEast(e.target.value)}
-                      onBlur={blurHandler("sideEast")}
-                      placeholder="0.0" className={showError("sideEast") ? inputErrorClass : inputClass} />
-                    {showError("sideEast") && <p className={errorMsgClass}>{errors.sideEast}</p>}
-                  </div>
-                  <div>
-                    <label className={labelClass}>الضلع الغربي (م){requiredStar}</label>
-                    <input type="number" min="0" step="0.1" value={sideWest}
-                      onChange={e => setSideWest(e.target.value)}
-                      onBlur={blurHandler("sideWest")}
-                      placeholder="0.0" className={showError("sideWest") ? inputErrorClass : inputClass} />
-                    {showError("sideWest") && <p className={errorMsgClass}>{errors.sideWest}</p>}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>المساحة الإجمالية (م²){requiredStar}</label>
+                      <input
+                        type="number"
+                        min="10"
+                        value={formData.area || ""}
+                        onChange={e => setFormData({ ...formData, area: parseFloat(e.target.value) || 0 })}
+                        onBlur={blurHandler("area")}
+                        className={showError("area") ? inputErrorClass : inputClass}
+                      />
+                      {showError("area") && <p className={errorMsgClass}>{errors.area}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>عدد الأدوار{requiredStar}</label>
+                      <select
+                        value={formData.floors || FloorsEnum.ground_first}
+                        onChange={e => setFormData({ ...formData, floors: e.target.value as CreateArchitectureSessionBody["floors"] })}
+                        className={selectClass}
+                      >
+                        {FLOORS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
+
+                <div>
+                  <p className={sectionHeaderClass}>أبعاد الأرض{requiredStar}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className={labelClass}>الضلع الشمالي (م){requiredStar}</label>
+                      <input type="number" min="0" step="0.1" value={sideNorth}
+                        onChange={e => setSideNorth(e.target.value)}
+                        onBlur={blurHandler("sideNorth")}
+                        placeholder="0.0" className={showError("sideNorth") ? inputErrorClass : inputClass} />
+                      {showError("sideNorth") && <p className={errorMsgClass}>{errors.sideNorth}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>الضلع الجنوبي (م){requiredStar}</label>
+                      <input type="number" min="0" step="0.1" value={sideSouth}
+                        onChange={e => setSideSouth(e.target.value)}
+                        onBlur={blurHandler("sideSouth")}
+                        placeholder="0.0" className={showError("sideSouth") ? inputErrorClass : inputClass} />
+                      {showError("sideSouth") && <p className={errorMsgClass}>{errors.sideSouth}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>الضلع الشرقي (م){requiredStar}</label>
+                      <input type="number" min="0" step="0.1" value={sideEast}
+                        onChange={e => setSideEast(e.target.value)}
+                        onBlur={blurHandler("sideEast")}
+                        placeholder="0.0" className={showError("sideEast") ? inputErrorClass : inputClass} />
+                      {showError("sideEast") && <p className={errorMsgClass}>{errors.sideEast}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>الضلع الغربي (م){requiredStar}</label>
+                      <input type="number" min="0" step="0.1" value={sideWest}
+                        onChange={e => setSideWest(e.target.value)}
+                        onBlur={blurHandler("sideWest")}
+                        placeholder="0.0" className={showError("sideWest") ? inputErrorClass : inputClass} />
+                      {showError("sideWest") && <p className={errorMsgClass}>{errors.sideWest}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 mb-4">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isIrregularLand}
+                        onChange={e => setIsIrregularLand(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                    </label>
+                    <span className="text-sm text-zinc-300">أرض غير منتظمة (زوايا غير قائمة)</span>
+                  </div>
+
+                  {isIrregularLand && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="mb-4"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelClass}>الوتر الرئيسي (م){requiredStar} <span className="text-zinc-500 font-normal">— لضبط زوايا الأرض المتعرجة</span></label>
+                          <input type="number" min="0" step="0.1" value={chordLength}
+                            onChange={e => setChordLength(e.target.value)}
+                            onBlur={blurHandler("chordLength")}
+                            placeholder="0.0" className={showError("chordLength") ? inputErrorClass : inputClass} />
+                          {showError("chordLength") && <p className={errorMsgClass}>{errors.chordLength}</p>}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {irregular && (
+                    <div className="mt-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                      <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-blue-300 font-semibold text-sm">تنبيه: أرض غير منتظمة</p>
+                        <p className="text-zinc-400 text-xs mt-1">
+                          الأبعاد تشير إلى أرض غير مستطيلة. سيوجّه المحرك التصميمي غرف الخدمات (المناور، دورات المياه، المخازن) نحو الزوايا المشطورة لضمان انتظام غرف المعيشة.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className={sectionHeaderClass}>الارتدادات النظامية{requiredStar}</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className={labelClass}>أمامي - جهة الشارع (م){requiredStar}</label>
+                      <input type="number" min="0" step="0.1" value={setbackFront}
+                        onChange={e => setSetbackFront(e.target.value)}
+                        onBlur={blurHandler("setbackFront")}
+                        placeholder="0.0" className={showError("setbackFront") ? inputErrorClass : inputClass} />
+                      {showError("setbackFront") && <p className={errorMsgClass}>{errors.setbackFront}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>جانبي - جهة الجيران (م){requiredStar}</label>
+                      <input type="number" min="0" step="0.1" value={setbackSide}
+                        onChange={e => setSetbackSide(e.target.value)}
+                        onBlur={blurHandler("setbackSide")}
+                        placeholder="0.0" className={showError("setbackSide") ? inputErrorClass : inputClass} />
+                      {showError("setbackSide") && <p className={errorMsgClass}>{errors.setbackSide}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>خلفي (م){requiredStar}</label>
+                      <input type="number" min="0" step="0.1" value={setbackBack}
+                        onChange={e => setSetbackBack(e.target.value)}
+                        onBlur={blurHandler("setbackBack")}
+                        placeholder="0.0" className={showError("setbackBack") ? inputErrorClass : inputClass} />
+                      {showError("setbackBack") && <p className={errorMsgClass}>{errors.setbackBack}</p>}
+                    </div>
+                  </div>
+
+                  {netBuildableArea != null && (
+                    <div className="mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-500/10 border border-teal-500/20">
+                      <span className="text-sm text-zinc-300">صافي مساحة البناء المسموحة للدور الواحد:</span>
+                      <span className="text-teal-300 font-bold text-lg">{netBuildableArea.toFixed(1)} م²</span>
+                      <span className="text-zinc-500 text-sm">× {floorsCount} أدوار = {(netBuildableArea * floorsCount).toFixed(1)} م²</span>
+                    </div>
+                  )}
+
+                  {exceedsArea && (
+                    <div className="mt-3 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30">
+                      <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-red-300 font-semibold text-sm">خطأ: البرنامج يتجاوز المساحة القابلة للبناء</p>
+                        <p className="text-zinc-400 text-xs mt-1">
+                          المساحة المُدخلة ({totalProgrammedArea} م²) أكبر من المساحة القابلة للبناء في {floorsCount} {floorsCount === 1 ? "دور" : "أدوار"} ({(netBuildableArea! * floorsCount).toFixed(1)} م²).
+                          يجب تقليل مساحات الغرف أو زيادة عدد الأدوار قبل المتابعة.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </CollapsibleSection>
+
+              <CollapsibleSection title="سياق الموقع والبيئة" icon={MapPin} iconColor="text-blue-400" badge="جديد">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={labelClass}>الوتر الرئيسي (م){requiredStar} <span className="text-zinc-500 font-normal">— لضبط زوايا الأرض المتعرجة</span></label>
-                    <input type="number" min="0" step="0.1" value={chordLength}
-                      onChange={e => setChordLength(e.target.value)}
-                      onBlur={blurHandler("chordLength")}
-                      placeholder="0.0" className={showError("chordLength") ? inputErrorClass : inputClass} />
-                    {showError("chordLength") && <p className={errorMsgClass}>{errors.chordLength}</p>}
+                    <label className={labelClass}>رقم الصك</label>
+                    <input type="text" value={deedNumber}
+                      onChange={e => setDeedNumber(e.target.value)}
+                      placeholder="رقم صك الملكية"
+                      className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>رقم القطعة</label>
+                    <input type="text" value={plotNumber}
+                      onChange={e => setPlotNumber(e.target.value)}
+                      placeholder="رقم القطعة"
+                      className={inputClass} />
                   </div>
                 </div>
 
-                {irregular && (
-                  <div className="mt-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                    <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className={sectionHeaderClass}>حالة الجيران</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <p className="text-blue-300 font-semibold text-sm">تنبيه: أرض غير منتظمة</p>
-                      <p className="text-zinc-400 text-xs mt-1">
-                        الأبعاد تشير إلى أرض غير مستطيلة. سيوجّه المحرك التصميمي غرف الخدمات (المناور، دورات المياه، المخازن) نحو الزوايا المشطورة لضمان انتظام غرف المعيشة.
-                      </p>
+                      <label className={labelClass}>الجار الشرقي</label>
+                      <select
+                        value={formData.neighborEast ?? ""}
+                        onChange={e => setFormData({ ...formData, neighborEast: e.target.value || undefined, neighborEastWindows: e.target.value === "built" ? formData.neighborEastWindows : undefined })}
+                        className={selectClass}
+                      >
+                        <option value="">— غير محدد —</option>
+                        {NEIGHBOR_STATUS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      {formData.neighborEast === "built" && (
+                        <input type="text" value={formData.neighborEastWindows ?? ""}
+                          onChange={e => setFormData({ ...formData, neighborEastWindows: e.target.value || undefined })}
+                          placeholder="مواقع نوافذ/فتحات الجار (مثال: الدور الأول - 3 نوافذ)"
+                          className={`${inputClass} mt-2`} />
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <p className={sectionHeaderClass}>الارتدادات النظامية (إجباري){requiredStar}</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className={labelClass}>أمامي - جهة الشارع (م){requiredStar}</label>
-                    <input type="number" min="0" step="0.1" value={setbackFront}
-                      onChange={e => setSetbackFront(e.target.value)}
-                      onBlur={blurHandler("setbackFront")}
-                      placeholder="0.0" className={showError("setbackFront") ? inputErrorClass : inputClass} />
-                    {showError("setbackFront") && <p className={errorMsgClass}>{errors.setbackFront}</p>}
-                  </div>
-                  <div>
-                    <label className={labelClass}>جانبي - جهة الجيران (م){requiredStar}</label>
-                    <input type="number" min="0" step="0.1" value={setbackSide}
-                      onChange={e => setSetbackSide(e.target.value)}
-                      onBlur={blurHandler("setbackSide")}
-                      placeholder="0.0" className={showError("setbackSide") ? inputErrorClass : inputClass} />
-                    {showError("setbackSide") && <p className={errorMsgClass}>{errors.setbackSide}</p>}
-                  </div>
-                  <div>
-                    <label className={labelClass}>خلفي (م){requiredStar}</label>
-                    <input type="number" min="0" step="0.1" value={setbackBack}
-                      onChange={e => setSetbackBack(e.target.value)}
-                      onBlur={blurHandler("setbackBack")}
-                      placeholder="0.0" className={showError("setbackBack") ? inputErrorClass : inputClass} />
-                    {showError("setbackBack") && <p className={errorMsgClass}>{errors.setbackBack}</p>}
+                    <div>
+                      <label className={labelClass}>الجار الغربي</label>
+                      <select
+                        value={formData.neighborWest ?? ""}
+                        onChange={e => setFormData({ ...formData, neighborWest: e.target.value || undefined, neighborWestWindows: e.target.value === "built" ? formData.neighborWestWindows : undefined })}
+                        className={selectClass}
+                      >
+                        <option value="">— غير محدد —</option>
+                        {NEIGHBOR_STATUS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      {formData.neighborWest === "built" && (
+                        <input type="text" value={formData.neighborWestWindows ?? ""}
+                          onChange={e => setFormData({ ...formData, neighborWestWindows: e.target.value || undefined })}
+                          placeholder="مواقع نوافذ/فتحات الجار (مثال: الدور الأول - 3 نوافذ)"
+                          className={`${inputClass} mt-2`} />
+                      )}
+                    </div>
+                    <div>
+                      <label className={labelClass}>الجار الجنوبي</label>
+                      <select
+                        value={formData.neighborSouth ?? ""}
+                        onChange={e => setFormData({ ...formData, neighborSouth: e.target.value || undefined, neighborSouthWindows: e.target.value === "built" ? formData.neighborSouthWindows : undefined })}
+                        className={selectClass}
+                      >
+                        <option value="">— غير محدد —</option>
+                        {NEIGHBOR_STATUS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      {formData.neighborSouth === "built" && (
+                        <input type="text" value={formData.neighborSouthWindows ?? ""}
+                          onChange={e => setFormData({ ...formData, neighborSouthWindows: e.target.value || undefined })}
+                          placeholder="مواقع نوافذ/فتحات الجار (مثال: الدور الأول - 3 نوافذ)"
+                          className={`${inputClass} mt-2`} />
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {netBuildableArea != null && (
-                  <div className="mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-500/10 border border-teal-500/20">
-                    <span className="text-sm text-zinc-300">صافي مساحة البناء المسموحة للدور الواحد:</span>
-                    <span className="text-teal-300 font-bold text-lg">{netBuildableArea.toFixed(1)} م²</span>
-                    <span className="text-zinc-500 text-sm">× {floorsCount} أدوار = {(netBuildableArea * floorsCount).toFixed(1)} م²</span>
-                  </div>
-                )}
-
-                {exceedsArea && (
-                  <div className="mt-3 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30">
-                    <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-red-300 font-semibold text-sm">خطأ: البرنامج يتجاوز المساحة القابلة للبناء</p>
-                      <p className="text-zinc-400 text-xs mt-1">
-                        المساحة المُدخلة ({totalProgrammedArea} م²) أكبر من المساحة القابلة للبناء في {floorsCount} {floorsCount === 1 ? "دور" : "أدوار"} ({(netBuildableArea! * floorsCount).toFixed(1)} م²).
-                        يجب تقليل مساحات الغرف أو زيادة عدد الأدوار قبل المتابعة.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <p className={sectionHeaderClass}>البرنامج المساحي الأساسي (إجباري){requiredStar}</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={labelClass}>عدد غرف النوم{requiredStar}</label>
-                    <input type="number" min="1" step="1" value={bedroomCount}
-                      onChange={e => setBedroomCount(e.target.value)}
-                      onBlur={blurHandler("bedroomCount")}
-                      placeholder="مثال: 4"
-                      className={showError("bedroomCount") ? inputErrorClass : inputClass} />
-                    {showError("bedroomCount") && <p className={errorMsgClass}>{errors.bedroomCount}</p>}
-                  </div>
-                  <div>
-                    <label className={labelClass}>نوع المطبخ{requiredStar}</label>
+                    <label className={labelClass}>نوع التربة</label>
                     <select
-                      value={formData.kitchenType ?? ""}
-                      onChange={e => setFormData({ ...formData, kitchenType: e.target.value as CreateArchitectureSessionBody["kitchenType"] || undefined })}
-                      onBlur={blurHandler("kitchenType")}
-                      className={showError("kitchenType") ? selectErrorClass : selectClass}
+                      value={formData.soilType ?? ""}
+                      onChange={e => setFormData({ ...formData, soilType: (e.target.value as CreateArchitectureSessionBody["soilType"]) || undefined })}
+                      className={selectClass}
                     >
-                      <option value="">— اختر —</option>
-                      {KITCHEN_TYPE_OPTIONS.map(opt => (
+                      <option value="">— غير محدد —</option>
+                      {SOIL_TYPE_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                    {showError("kitchenType") && <p className={errorMsgClass}>{errors.kitchenType}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}>موقع الدرج والمصعد{requiredStar}</label>
+                    <label className={labelClass}>نطاق الميزانية</label>
                     <select
-                      value={formData.stairLocation ?? ""}
-                      onChange={e => setFormData({ ...formData, stairLocation: e.target.value as CreateArchitectureSessionBody["stairLocation"] || undefined })}
-                      onBlur={blurHandler("stairLocation")}
-                      className={showError("stairLocation") ? selectErrorClass : selectClass}
+                      value={formData.budgetRange ?? ""}
+                      onChange={e => setFormData({ ...formData, budgetRange: (e.target.value as CreateArchitectureSessionBody["budgetRange"]) || undefined })}
+                      className={selectClass}
                     >
-                      <option value="">— اختر —</option>
-                      {STAIR_LOCATION_OPTIONS.map(opt => (
+                      <option value="">— غير محدد —</option>
+                      {BUDGET_RANGE_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                    {showError("stairLocation") && <p className={errorMsgClass}>{errors.stairLocation}</p>}
                   </div>
                 </div>
-              </div>
+              </CollapsibleSection>
 
-              <div>
-                <p className={sectionHeaderClass}>البيانات البيئية والخدمات (إجباري){requiredStar}</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CollapsibleSection title="التفضيلات التصميمية" icon={Landmark} iconColor="text-purple-400" badge="اختياري">
+                <p className="text-xs text-zinc-500 -mt-2 mb-4">عند تركها فارغة، سيقوم الذكاء الاصطناعي باقتراح القيم المثلى بناءً على بيانات الأرض والميزانية.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={labelClass}>اتجاه الواجهة{requiredStar}</label>
+                    <label className={labelClass}>اتجاه الواجهة</label>
                     <select
                       value={formData.facadeDirection ?? ""}
                       onChange={e => setFormData({ ...formData, facadeDirection: e.target.value as CreateArchitectureSessionBody["facadeDirection"] || undefined })}
-                      onBlur={blurHandler("facadeDirection")}
-                      className={showError("facadeDirection") ? selectErrorClass : selectClass}
+                      className={selectClass}
                     >
-                      <option value="">— اختر —</option>
+                      <option value="">— يُحدد تلقائياً —</option>
                       {FACADE_DIRECTION_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                    {showError("facadeDirection") && <p className={errorMsgClass}>{errors.facadeDirection}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}>نظام التكييف{requiredStar}</label>
+                    <label className={labelClass}>فارق المنسوب عن الشارع (سم)</label>
+                    <input type="number" step="1" value={groundLevelDiff}
+                      onChange={e => setGroundLevelDiff(e.target.value)}
+                      placeholder="مثال: 30 — يُقدّر تلقائياً إن لم يُحدد"
+                      className={inputClass} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className={labelClass}>عدد غرف النوم</label>
+                    <input type="number" min="1" step="1" value={bedroomCount}
+                      onChange={e => setBedroomCount(e.target.value)}
+                      placeholder="يُحدد تلقائياً"
+                      className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>نوع المطبخ</label>
+                    <select
+                      value={formData.kitchenType ?? ""}
+                      onChange={e => setFormData({ ...formData, kitchenType: (e.target.value as CreateArchitectureSessionBody["kitchenType"]) || undefined })}
+                      className={selectClass}
+                    >
+                      <option value="">— يُحدد تلقائياً —</option>
+                      {KITCHEN_TYPE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>موقع الدرج والمصعد</label>
+                    <select
+                      value={formData.stairLocation ?? ""}
+                      onChange={e => setFormData({ ...formData, stairLocation: (e.target.value as CreateArchitectureSessionBody["stairLocation"]) || undefined })}
+                      className={selectClass}
+                    >
+                      <option value="">— يُحدد تلقائياً —</option>
+                      {STAIR_LOCATION_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>نظام التكييف</label>
                     <select
                       value={formData.acType ?? ""}
-                      onChange={e => setFormData({ ...formData, acType: e.target.value as CreateArchitectureSessionBody["acType"] || undefined })}
-                      onBlur={blurHandler("acType")}
-                      className={showError("acType") ? selectErrorClass : selectClass}
+                      onChange={e => setFormData({ ...formData, acType: (e.target.value as CreateArchitectureSessionBody["acType"]) || undefined })}
+                      className={selectClass}
                     >
-                      <option value="">— اختر —</option>
+                      <option value="">— يُحدد تلقائياً —</option>
                       {AC_TYPE_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                    {showError("acType") && <p className={errorMsgClass}>{errors.acType}</p>}
-                  </div>
-                  <div>
-                    <label className={labelClass}>فارق المنسوب عن الشارع (سم){requiredStar}</label>
-                    <input type="number" step="1" value={groundLevelDiff}
-                      onChange={e => setGroundLevelDiff(e.target.value)}
-                      onBlur={blurHandler("groundLevelDiff")}
-                      placeholder="مثال: 30"
-                      className={showError("groundLevelDiff") ? inputErrorClass : inputClass} />
-                    {showError("groundLevelDiff") && <p className={errorMsgClass}>{errors.groundLevelDiff}</p>}
                   </div>
                 </div>
-              </div>
+              </CollapsibleSection>
 
               <div>
                 <label className={labelClass}>متطلبات إضافية (اختياري)</label>

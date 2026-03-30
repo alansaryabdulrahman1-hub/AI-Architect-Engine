@@ -161,6 +161,13 @@ export default function Session() {
                 {session.kitchenType && <div><span className="text-zinc-500">المطبخ: </span>{session.kitchenType === 'open' ? 'مفتوح' : 'مغلق'}</div>}
                 {session.acType && <div><span className="text-zinc-500">التكييف: </span>{session.acType}</div>}
                 {session.stairLocation && <div><span className="text-zinc-500">الدرج: </span>{session.stairLocation}</div>}
+                {session.deedNumber && <div><span className="text-zinc-500">رقم الصك: </span>{session.deedNumber}</div>}
+                {session.plotNumber && <div><span className="text-zinc-500">رقم القطعة: </span>{session.plotNumber}</div>}
+                {session.neighborEast && <div><span className="text-zinc-500">الجار الشرقي: </span>{session.neighborEast}{session.neighborEastWindows ? ` (نوافذ: ${session.neighborEastWindows})` : ""}</div>}
+                {session.neighborWest && <div><span className="text-zinc-500">الجار الغربي: </span>{session.neighborWest}{session.neighborWestWindows ? ` (نوافذ: ${session.neighborWestWindows})` : ""}</div>}
+                {session.neighborSouth && <div><span className="text-zinc-500">الجار الجنوبي: </span>{session.neighborSouth}{session.neighborSouthWindows ? ` (نوافذ: ${session.neighborSouthWindows})` : ""}</div>}
+                {session.soilType && <div><span className="text-zinc-500">نوع التربة: </span>{session.soilType}</div>}
+                {session.budgetRange && <div><span className="text-zinc-500">الميزانية: </span>{session.budgetRange}</div>}
               </div>
               {session.additionalRequirements && (
                 <div className="mt-3 pt-3 border-t border-indigo-500/10 text-sm text-zinc-400">

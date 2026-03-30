@@ -81,6 +81,27 @@ function computeNetBuildableArea(params: {
   return buildableWidth * buildableDepth;
 }
 
+const SOIL_TYPE_LABELS: Record<string, string> = {
+  rocky: "صخري (Rocky)",
+  sandy: "رملي (Sandy)",
+  clay: "طيني (Clay)",
+  mixed: "مختلط (Mixed)",
+};
+
+const BUDGET_RANGE_LABELS: Record<string, string> = {
+  low: "منخفض (Low)",
+  medium: "متوسط (Medium)",
+  high: "مرتفع (High)",
+  premium: "فاخر (Premium)",
+};
+
+const NEIGHBOR_STATUS_LABELS: Record<string, string> = {
+  built: "مبني (Built)",
+  empty: "فارغ (Empty)",
+  street: "شارع (Street)",
+  garden: "حديقة (Garden)",
+};
+
 function buildArchitecturePrompt(
   buildingType: string,
   buildingSubtype: string,
@@ -93,10 +114,19 @@ function buildArchitecturePrompt(
     sideSouth?: number | null;
     sideEast?: number | null;
     sideWest?: number | null;
+    isIrregularLand?: boolean | null;
     chordLength?: number | null;
     setbackFront?: number | null;
     setbackSide?: number | null;
     setbackBack?: number | null;
+    neighborEast?: string | null;
+    neighborEastWindows?: string | null;
+    neighborWest?: string | null;
+    neighborWestWindows?: string | null;
+    neighborSouth?: string | null;
+    neighborSouthWindows?: string | null;
+    soilType?: string | null;
+    budgetRange?: string | null;
     acType?: string | null;
     facadeDirection?: string | null;
     stairLocation?: string | null;
@@ -135,8 +165,8 @@ function buildArchitecturePrompt(
 - إيقاع خلفي: ${options.setbackBack ?? 0} م${options.netBuildableArea != null ? `\n- **صافي المساحة القابلة للبناء للدور الواحد: ${options.netBuildableArea.toFixed(1)} م²**` : ""}`;
 
   const programSection = [
-    options.bedroomCount ? `- عدد غرف النوم المطلوبة: ${options.bedroomCount}` : null,
-    options.kitchenType ? `- نوع المطبخ: ${KITCHEN_TYPE_LABELS[options.kitchenType] || options.kitchenType}` : null,
+    options.bedroomCount ? `- عدد غرف النوم المطلوبة: ${options.bedroomCount}` : `- عدد غرف النوم: (لم يُحدد — اقترح العدد الأمثل بناءً على المساحة وعدد الأدوار)`,
+    options.kitchenType ? `- نوع المطبخ: ${KITCHEN_TYPE_LABELS[options.kitchenType] || options.kitchenType}` : `- نوع المطبخ: (لم يُحدد — اقترح الأنسب بناءً على المساحة المتاحة)`,
     options.groundLevelDifference != null ? `- فارق منسوب الأرض عن الشارع: ${options.groundLevelDifference} سم` : null,
   ].filter(Boolean).join("\n");
 
@@ -144,14 +174,61 @@ function buildArchitecturePrompt(
     ? `\n\n**البرنامج المساحي:**\n${programSection}`
     : "";
 
+  const facadeOrientationGuidance = options.facadeDirection
+    ? (() => {
+        const dir = options.facadeDirection;
+        const dirLabel = FACADE_DIRECTION_LABELS[dir] || dir;
+        const orientationRules: Record<string, string> = {
+          north: `الواجهة الشمالية: مثالية للإضاءة المنتشرة. ضع الفراغات الرئيسية (صالة، غرف نوم) على هذه الجهة. يمكن توسيع النوافذ بأمان دون أشعة مباشرة. صمم مدخلاً مظللاً واسعاً.`,
+          south: `الواجهة الجنوبية: تتعرض لأشعة شمس مباشرة قوية. استخدم كاسرات شمس أفقية وتقليل فتحات النوافذ. وجّه غرف الخدمات والمطبخ والمخازن لهذه الجهة. ضع غرف المعيشة بعيداً عن الجنوب أو استخدم عزلاً حرارياً مضاعفاً.`,
+          east: `الواجهة الشرقية: تستقبل شمس الصباح المعتدلة. مناسبة لغرف النوم الرئيسية والمطبخ. استخدم فتحات نوافذ متوسطة مع كاسرات رأسية. المدخل الشرقي يوفر إضاءة صباحية مرحبة.`,
+          west: `الواجهة الغربية: تتعرض لحرارة عصر شديدة. قلّل الفتحات على هذه الجهة. وجّه الخدمات والممرات والدرج نحو الغرب كمنطقة عازلة. استخدم جدران مزدوجة أو عزلاً إضافياً.`,
+        };
+        return `- اتجاه الواجهة الرئيسية: ${dirLabel}\n  **استراتيجية التوجيه:** ${orientationRules[dir] || ""}`;
+      })()
+    : `- اتجاه الواجهة: (لم يُحدد — اقترح التوجيه الأمثل بناءً على أبعاد الأرض وسياق الجوار)`;
+
   const siteDetailsSection = [
-    options.acType ? `- نظام التكييف: ${AC_TYPE_LABELS[options.acType] || options.acType} (لتحديد ارتفاعات الأسقف الإنشائية)` : null,
-    options.facadeDirection ? `- اتجاه الواجهة الرئيسية: ${FACADE_DIRECTION_LABELS[options.facadeDirection] || options.facadeDirection}` : null,
-    options.stairLocation ? `- موقع الدرج والمصعد: ${STAIR_LOCATION_LABELS[options.stairLocation] || options.stairLocation}` : null,
+    facadeOrientationGuidance,
+    options.acType ? `- نظام التكييف: ${AC_TYPE_LABELS[options.acType] || options.acType} (لتحديد ارتفاعات الأسقف الإنشائية)` : `- نظام التكييف: (لم يُحدد — اقترح الأنسب بناءً على الميزانية والمساحة)`,
+    options.stairLocation ? `- موقع الدرج والمصعد: ${STAIR_LOCATION_LABELS[options.stairLocation] || options.stairLocation}` : `- موقع الدرج: (لم يُحدد — اقترح الموقع الأمثل بناءً على التوزيع المساحي)`,
   ].filter(Boolean).join("\n");
 
   const siteDetailsBlock = siteDetailsSection
     ? `\n\n**تفاصيل الموقع والتصميم:**\n${siteDetailsSection}`
+    : "";
+
+  const neighborLines: string[] = [];
+  if (options.neighborEast) {
+    let line = `- الجار الشرقي: ${NEIGHBOR_STATUS_LABELS[options.neighborEast] || options.neighborEast}`;
+    if (options.neighborEast === "built" && options.neighborEastWindows) line += ` — نوافذ/فتحات: ${options.neighborEastWindows}`;
+    neighborLines.push(line);
+  }
+  if (options.neighborWest) {
+    let line = `- الجار الغربي: ${NEIGHBOR_STATUS_LABELS[options.neighborWest] || options.neighborWest}`;
+    if (options.neighborWest === "built" && options.neighborWestWindows) line += ` — نوافذ/فتحات: ${options.neighborWestWindows}`;
+    neighborLines.push(line);
+  }
+  if (options.neighborSouth) {
+    let line = `- الجار الجنوبي: ${NEIGHBOR_STATUS_LABELS[options.neighborSouth] || options.neighborSouth}`;
+    if (options.neighborSouth === "built" && options.neighborSouthWindows) line += ` — نوافذ/فتحات: ${options.neighborSouthWindows}`;
+    neighborLines.push(line);
+  }
+
+  const neighborBlock = neighborLines.length > 0
+    ? `\n\n**سياق الجوار:**\n${neighborLines.join("\n")}\nيجب مراعاة خصوصية النوافذ والفتحات بالنسبة للجيران المبنيين. عند وجود نوافذ مطلة من الجار، تجنب فتح نوافذ مقابلة مباشرة واستخدم حلول الخصوصية (مناور، زجاج معتم، أو تبديل اتجاه الفتحات). وجّه الفتحات الرئيسية نحو الجهات الفارغة أو الشوارع.`
+    : "";
+
+  const soilBlock = options.soilType
+    ? `\n\n**نوع التربة:** ${SOIL_TYPE_LABELS[options.soilType] || options.soilType}\nيجب مراعاة نوع التربة في اختيار نظام الأساسات المقترح (معلومات استرشادية).`
+    : "";
+
+  const budgetBlock = options.budgetRange
+    ? `\n\n**نطاق الميزانية:** ${BUDGET_RANGE_LABELS[options.budgetRange] || options.budgetRange}\n${
+        options.budgetRange === "low" || options.budgetRange === "medium"
+          ? "التصميم يجب أن يعتمد على أشكال بسيطة ومستقيمة لتقليل التكاليف الإنشائية، مع تقليل الكسرات في المسقط الأفقي."
+          : "يمكن اعتماد تصاميم أكثر تعقيداً وكسرات معمارية متعددة لإثراء الواجهة والتوزيع الداخلي."
+      }`
     : "";
 
   const engineeringRules = `
@@ -203,7 +280,7 @@ function buildArchitecturePrompt(
 - نوع المبنى: ${typeLabel}
 - الصنف/التخصص: ${buildingSubtype}
 - المساحة الإجمالية للقطعة: ${area} متر مربع
-- عدد الأدوار: ${floorsLabel} (${floorsNum} أدوار)${reqText}${plotSection}${programBlock}${siteDetailsBlock}${imageAnalysisSection}
+- عدد الأدوار: ${floorsLabel} (${floorsNum} أدوار)${reqText}${plotSection}${neighborBlock}${soilBlock}${budgetBlock}${programBlock}${siteDetailsBlock}${imageAnalysisSection}
 ${engineeringRules}
 
 **المطلوب منك:**
@@ -342,10 +419,19 @@ router.post("/sessions", async (req, res) => {
         sideSouth: body.sideSouth,
         sideEast: body.sideEast,
         sideWest: body.sideWest,
+        isIrregularLand: body.isIrregularLand,
         chordLength: body.chordLength,
         setbackFront: body.setbackFront,
         setbackSide: body.setbackSide,
         setbackBack: body.setbackBack,
+        neighborEast: body.neighborEast,
+        neighborEastWindows: body.neighborEastWindows,
+        neighborWest: body.neighborWest,
+        neighborWestWindows: body.neighborWestWindows,
+        neighborSouth: body.neighborSouth,
+        neighborSouthWindows: body.neighborSouthWindows,
+        soilType: body.soilType,
+        budgetRange: body.budgetRange,
         acType: body.acType,
         facadeDirection: body.facadeDirection,
         stairLocation: body.stairLocation,
@@ -367,7 +453,7 @@ router.post("/sessions", async (req, res) => {
     const stairLabel = body.stairLocation ? (STAIR_LOCATION_LABELS[body.stairLocation] || body.stairLocation) : null;
     const floorsLabel = FLOORS_LABELS[body.floors] || body.floors;
 
-    const userRequestText = `أريد تصميم ${body.buildingSubtype} (${BUILDING_TYPE_LABELS[body.buildingType] || body.buildingType}) بمساحة ${body.area} م² وعدد أدوار: ${floorsLabel}. عدد غرف النوم: ${body.bedroomCount}. نوع المطبخ: ${KITCHEN_TYPE_LABELS[body.kitchenType] || body.kitchenType}. فارق المنسوب: ${body.groundLevelDifference} سم.${facadeLabel ? ` اتجاه الواجهة: ${facadeLabel}.` : ""}${acLabel ? ` نظام التكييف: ${acLabel}.` : ""}${stairLabel ? ` موقع الدرج: ${stairLabel}.` : ""}${body.additionalRequirements ? ` متطلبات إضافية: ${body.additionalRequirements}` : ""}${hasImages ? " أرفقت صوراً مرجعية للتحليل." : ""}`;
+    const userRequestText = `أريد تصميم ${body.buildingSubtype} (${BUILDING_TYPE_LABELS[body.buildingType] || body.buildingType}) بمساحة ${body.area} م² وعدد أدوار: ${floorsLabel}.${body.bedroomCount ? ` عدد غرف النوم: ${body.bedroomCount}.` : ""}${body.kitchenType ? ` نوع المطبخ: ${KITCHEN_TYPE_LABELS[body.kitchenType] || body.kitchenType}.` : ""}${body.groundLevelDifference != null ? ` فارق المنسوب: ${body.groundLevelDifference} سم.` : ""}${facadeLabel ? ` اتجاه الواجهة: ${facadeLabel}.` : ""}${acLabel ? ` نظام التكييف: ${acLabel}.` : ""}${stairLabel ? ` موقع الدرج: ${stairLabel}.` : ""}${body.budgetRange ? ` الميزانية: ${BUDGET_RANGE_LABELS[body.budgetRange] || body.budgetRange}.` : ""}${body.soilType ? ` نوع التربة: ${SOIL_TYPE_LABELS[body.soilType] || body.soilType}.` : ""}${body.additionalRequirements ? ` متطلبات إضافية: ${body.additionalRequirements}` : ""}${hasImages ? " أرفقت صوراً مرجعية للتحليل." : ""}`;
 
     const userContent: ContentPart[] = [
       { type: "text", text: userRequestText },
@@ -424,16 +510,27 @@ router.post("/sessions", async (req, res) => {
         sideSouth: body.sideSouth,
         sideEast: body.sideEast,
         sideWest: body.sideWest,
-        chordLength: body.chordLength,
+        isIrregularLand: body.isIrregularLand ?? false,
+        chordLength: body.chordLength ?? 0,
         setbackFront: body.setbackFront,
         setbackSide: body.setbackSide,
         setbackBack: body.setbackBack,
-        acType: body.acType,
-        facadeDirection: body.facadeDirection,
-        stairLocation: body.stairLocation,
-        bedroomCount: body.bedroomCount,
-        kitchenType: body.kitchenType,
-        groundLevelDifference: body.groundLevelDifference,
+        deedNumber: body.deedNumber ?? null,
+        plotNumber: body.plotNumber ?? null,
+        neighborEast: body.neighborEast ?? null,
+        neighborEastWindows: body.neighborEastWindows ?? null,
+        neighborWest: body.neighborWest ?? null,
+        neighborWestWindows: body.neighborWestWindows ?? null,
+        neighborSouth: body.neighborSouth ?? null,
+        neighborSouthWindows: body.neighborSouthWindows ?? null,
+        soilType: body.soilType ?? null,
+        budgetRange: body.budgetRange ?? null,
+        acType: body.acType ?? null,
+        facadeDirection: body.facadeDirection ?? null,
+        stairLocation: body.stairLocation ?? null,
+        bedroomCount: body.bedroomCount ?? null,
+        kitchenType: body.kitchenType ?? null,
+        groundLevelDifference: body.groundLevelDifference ?? 0,
         additionalRequirements: body.additionalRequirements ?? null,
         generatedPlan: fullPlan,
         conversationId: conversation.id,

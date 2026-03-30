@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CreateArchitectureSessionBodyAcType } from "./createArchitectureSessionBodyAcType";
+import type { CreateArchitectureSessionBodyBudgetRange } from "./createArchitectureSessionBodyBudgetRange";
 import type { CreateArchitectureSessionBodyBuildingType } from "./createArchitectureSessionBodyBuildingType";
 import type { CreateArchitectureSessionBodyFacadeDirection } from "./createArchitectureSessionBodyFacadeDirection";
 import type { CreateArchitectureSessionBodyFloors } from "./createArchitectureSessionBodyFloors";
 import type { CreateArchitectureSessionBodyKitchenType } from "./createArchitectureSessionBodyKitchenType";
+import type { CreateArchitectureSessionBodySoilType } from "./createArchitectureSessionBodySoilType";
 import type { CreateArchitectureSessionBodyStairLocation } from "./createArchitectureSessionBodyStairLocation";
 
 export interface CreateArchitectureSessionBody {
@@ -26,29 +28,51 @@ export interface CreateArchitectureSessionBody {
   sideEast: number;
   /** West side length of the plot in meters */
   sideWest: number;
+  /** Whether the land has irregular shape */
+  isIrregularLand?: boolean;
   /** Chord/diagonal length for correcting irregular non-right-angle corners in meters */
-  chordLength: number;
+  chordLength?: number;
   /** Front setback in meters (street side) */
   setbackFront: number;
   /** Side setback in meters (neighbor side) */
   setbackSide: number;
   /** Back setback in meters */
   setbackBack: number;
+  /** Deed number for the plot */
+  deedNumber?: string;
+  /** Plot number */
+  plotNumber?: string;
+  /** Neighbor status on the east boundary (e.g. built, empty, street) */
+  neighborEast?: string;
+  /** Window/opening locations on east neighbor boundary when built */
+  neighborEastWindows?: string;
+  /** Neighbor status on the west boundary */
+  neighborWest?: string;
+  /** Window/opening locations on west neighbor boundary when built */
+  neighborWestWindows?: string;
+  /** Neighbor status on the south boundary */
+  neighborSouth?: string;
+  /** Window/opening locations on south neighbor boundary when built */
+  neighborSouthWindows?: string;
+  /** Soil type */
+  soilType?: CreateArchitectureSessionBodySoilType;
+  /** Budget range */
+  budgetRange?: CreateArchitectureSessionBodyBudgetRange;
   /** Air conditioning system type */
-  acType: CreateArchitectureSessionBodyAcType;
+  acType?: CreateArchitectureSessionBodyAcType;
   /** Main facade direction */
-  facadeDirection: CreateArchitectureSessionBodyFacadeDirection;
+  facadeDirection?: CreateArchitectureSessionBodyFacadeDirection;
   /** Stair and elevator location within the building */
-  stairLocation: CreateArchitectureSessionBodyStairLocation;
+  stairLocation?: CreateArchitectureSessionBodyStairLocation;
   /**
    * Number of bedrooms required
    * @minimum 1
    */
-  bedroomCount: number;
+  bedroomCount?: number;
   /** Kitchen type */
-  kitchenType: CreateArchitectureSessionBodyKitchenType;
+  kitchenType?: CreateArchitectureSessionBodyKitchenType;
   /** Ground level difference from street in centimeters */
-  groundLevelDifference: number;
+  groundLevelDifference?: number;
   additionalRequirements?: string;
   /** Array of base64-encoded image data URLs for sketches, site photos, or design references */
   images?: string[];

@@ -82,11 +82,10 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 React+Vite frontend with full RTL Arabic support. Dark professional theme inspired by modern AI tools.
 
 - Sidebar with session history
-- Comprehensive form with all-required engineering fields:
-  - Building type/subtype, area, floors (3 options: ground_only, ground_first, ground_first_annex)
-  - Plot dimensions (4 sides + chord), setbacks (front/side/back)
-  - Program: bedroom count, kitchen type (open/closed), stair location (central/side/back)
-  - Environment: facade direction (N/S/E/W), AC type (split/concealed/central), ground level difference
+- Three-section collapsible form:
+  - **Core Geometry (mandatory):** Building type/subtype, area, floors, plot dimensions (4 sides), irregular land toggle + conditional chord field, setbacks (front/side/back), facade direction, ground level difference
+  - **Site & Environmental Context (new, optional):** Deed number, plot number, neighbor status per boundary (east/west/south), soil type (rocky/sandy/clay/mixed), budget range (low/medium/high/premium)
+  - **Design Preferences (optional, AI suggests when omitted):** Bedroom count, kitchen type (open/closed), stair location (central/side/back), AC type (split/concealed/central)
 - Arabic validation errors, area overflow blocking, irregular plot alert
 - Image upload support (sketches, site photos, design references) — up to 5 images, converted to base64
 - Real-time streaming AI plan generation with vision-capable image analysis
@@ -105,7 +104,7 @@ Express 5 API server.
 
 ### `lib/db` (`@workspace/db`)
 
-Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`. Architecture sessions include `floor_plan_image_url` and `exterior_image_url` nullable columns for AI-generated images.
+Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`. Architecture sessions include nullable columns for: AI-generated images (floor_plan_image_url, exterior_image_url), site context (deed_number, plot_number, neighbor_east/west/south, soil_type, budget_range, is_irregular_land), and optional design preferences (ac_type, stair_location, bedroom_count, kitchen_type).
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 

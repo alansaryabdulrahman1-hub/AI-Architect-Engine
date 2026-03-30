@@ -63,6 +63,25 @@ export interface ArchitectureSession {
   kitchenType?: string;
   groundLevelDifference?: number;
   additionalRequirements?: string;
+  isIrregularLand?: boolean;
+  deedNumber?: string;
+  plotNumber?: string;
+  /** Neighbor status on the east boundary (e.g. built, empty, street) */
+  neighborEast?: string;
+  /** Window/opening locations on east neighbor boundary when built */
+  neighborEastWindows?: string;
+  /** Neighbor status on the west boundary */
+  neighborWest?: string;
+  /** Window/opening locations on west neighbor boundary when built */
+  neighborWestWindows?: string;
+  /** Neighbor status on the south boundary */
+  neighborSouth?: string;
+  /** Window/opening locations on south neighbor boundary when built */
+  neighborSouthWindows?: string;
+  /** Soil type (rocky, sandy, clay, mixed) */
+  soilType?: string;
+  /** Budget range (low, medium, high, premium) */
+  budgetRange?: string;
   generatedPlan: string;
   floorPlanImageUrl?: string | null;
   exteriorImageUrl?: string | null;
@@ -92,6 +111,32 @@ export const CreateArchitectureSessionBodyFloors = {
   ground_only: "ground_only",
   ground_first: "ground_first",
   ground_first_annex: "ground_first_annex",
+} as const;
+
+/**
+ * Soil type
+ */
+export type CreateArchitectureSessionBodySoilType =
+  (typeof CreateArchitectureSessionBodySoilType)[keyof typeof CreateArchitectureSessionBodySoilType];
+
+export const CreateArchitectureSessionBodySoilType = {
+  rocky: "rocky",
+  sandy: "sandy",
+  clay: "clay",
+  mixed: "mixed",
+} as const;
+
+/**
+ * Budget range
+ */
+export type CreateArchitectureSessionBodyBudgetRange =
+  (typeof CreateArchitectureSessionBodyBudgetRange)[keyof typeof CreateArchitectureSessionBodyBudgetRange];
+
+export const CreateArchitectureSessionBodyBudgetRange = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  premium: "premium",
 } as const;
 
 /**
@@ -156,29 +201,51 @@ export interface CreateArchitectureSessionBody {
   sideEast: number;
   /** West side length of the plot in meters */
   sideWest: number;
+  /** Whether the land has irregular shape */
+  isIrregularLand?: boolean;
   /** Chord/diagonal length for correcting irregular non-right-angle corners in meters */
-  chordLength: number;
+  chordLength?: number;
   /** Front setback in meters (street side) */
   setbackFront: number;
   /** Side setback in meters (neighbor side) */
   setbackSide: number;
   /** Back setback in meters */
   setbackBack: number;
+  /** Deed number for the plot */
+  deedNumber?: string;
+  /** Plot number */
+  plotNumber?: string;
+  /** Neighbor status on the east boundary (e.g. built, empty, street) */
+  neighborEast?: string;
+  /** Window/opening locations on east neighbor boundary when built */
+  neighborEastWindows?: string;
+  /** Neighbor status on the west boundary */
+  neighborWest?: string;
+  /** Window/opening locations on west neighbor boundary when built */
+  neighborWestWindows?: string;
+  /** Neighbor status on the south boundary */
+  neighborSouth?: string;
+  /** Window/opening locations on south neighbor boundary when built */
+  neighborSouthWindows?: string;
+  /** Soil type */
+  soilType?: CreateArchitectureSessionBodySoilType;
+  /** Budget range */
+  budgetRange?: CreateArchitectureSessionBodyBudgetRange;
   /** Air conditioning system type */
-  acType: CreateArchitectureSessionBodyAcType;
+  acType?: CreateArchitectureSessionBodyAcType;
   /** Main facade direction */
-  facadeDirection: CreateArchitectureSessionBodyFacadeDirection;
+  facadeDirection?: CreateArchitectureSessionBodyFacadeDirection;
   /** Stair and elevator location within the building */
-  stairLocation: CreateArchitectureSessionBodyStairLocation;
+  stairLocation?: CreateArchitectureSessionBodyStairLocation;
   /**
    * Number of bedrooms required
    * @minimum 1
    */
-  bedroomCount: number;
+  bedroomCount?: number;
   /** Kitchen type */
-  kitchenType: CreateArchitectureSessionBodyKitchenType;
+  kitchenType?: CreateArchitectureSessionBodyKitchenType;
   /** Ground level difference from street in centimeters */
-  groundLevelDifference: number;
+  groundLevelDifference?: number;
   additionalRequirements?: string;
   /** Array of base64-encoded image data URLs for sketches, site photos, or design references */
   images?: string[];
