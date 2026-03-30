@@ -89,9 +89,11 @@ React+Vite frontend with full RTL Arabic support. Dark professional theme inspir
 - Arabic validation errors, area overflow blocking, irregular plot alert
 - Image upload support (sketches, site photos, design references) — up to 5 images, converted to base64
 - Real-time streaming AI plan generation with vision-capable image analysis
-- Session view with layout: User Summary → AI Plan → Image Previews → Discussion → Sticky Chat Input
+- Session view with layout: User Summary → Architectural Package Status → AI Plan → DXF Download → Image Previews → Discussion → Sticky Chat Input
+- **Architectural Package status indicator**: Shows real-time status of all 4 outputs (Plan, DXF, 2D Image, 3D Exterior) with checkmarks as each completes; disappears when all assets are ready
 - AI-generated image cards: 2D floor plan + 3D exterior view (DALL-E 3), with coordinate-aware prompts and loading/error states
-- DXF download: AutoCAD-compatible export with full ASCII encoding (stripNonAscii), ACADVER/DWGCODEPAGE(ANSI_1252)/INSUNITS/LUNITS/LUPREC headers, STYLE table (Standard/txt.shx font), proper layer structure, Buffer-based ASCII response
+- DXF download: Auto-generated after plan completion (stored in DB), served instantly. Legacy sessions fall back to on-demand generation. AutoCAD-compatible with ASCII encoding, ACADVER/DWGCODEPAGE(ANSI_1252)/INSUNITS/LUNITS/LUPREC headers, STYLE table (Standard/txt.shx font), proper layer structure
+- **Generation phases UI**: During plan generation, shows animated phase indicators (land geometry analysis → spatial layout → architectural design → coordinates → AutoCAD script → engineering rules review) based on elapsed time
 - Code block copy buttons for AutoLISP scripts
 
 ### `artifacts/api-server` (`@workspace/api-server`)
@@ -104,7 +106,7 @@ Express 5 API server.
 
 ### `lib/db` (`@workspace/db`)
 
-Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`. Architecture sessions include nullable columns for: AI-generated images (floor_plan_image_url, exterior_image_url), site context (deed_number, plot_number, neighbor_east/west/south, soil_type, budget_range, is_irregular_land), and optional design preferences (ac_type, stair_location, bedroom_count, kitchen_type).
+Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`. Architecture sessions include nullable columns for: pre-generated DXF content (dxf_content), AI-generated images (floor_plan_image_url, exterior_image_url), site context (deed_number, plot_number, neighbor_east/west/south, soil_type, budget_range, is_irregular_land), and optional design preferences (ac_type, stair_location, bedroom_count, kitchen_type).
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 

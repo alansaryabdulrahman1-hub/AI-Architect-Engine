@@ -4,7 +4,7 @@ import { useGetArchitectureSession, useListOpenaiMessages } from "@workspace/api
 import { useArchitectureFollowup } from "@/hooks/use-architecture-stream";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ImageUpload } from "@/components/ImageUpload";
-import { Send, User, Bot, Loader2, FileText, Building, FileBox, MessageSquare, Download, Image as ImageIcon } from "lucide-react";
+import { Send, User, Bot, Loader2, FileText, Building, FileBox, MessageSquare, Download, Image as ImageIcon, CheckCircle2, Package, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 
@@ -22,41 +22,47 @@ export default function Session() {
   const [question, setQuestion] = useState("");
   const [followupImages, setFollowupImages] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [imagesPollActive, setImagesPollActive] = useState(false);
-  const [imagesPollTimedOut, setImagesPollTimedOut] = useState(false);
+  const [assetsPollActive, setAssetsPollActive] = useState(false);
+  const [assetsPollTimedOut, setAssetsPollTimedOut] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [dbMessages, answerStream]);
 
   useEffect(() => {
-    if (session && (!session.floorPlanImageUrl || !session.exteriorImageUrl)) {
-      setImagesPollActive(true);
-      setImagesPollTimedOut(false);
+    if (session && (!session.floorPlanImageUrl || !session.exteriorImageUrl || !session.dxfContent)) {
+      setAssetsPollActive(true);
+      setAssetsPollTimedOut(false);
     }
   }, [session?.id]);
 
   useEffect(() => {
-    if (!imagesPollActive || !session) return;
+    if (!assetsPollActive || !session) return;
 
     const interval = setInterval(async () => {
       const result = await refetchSession();
       const updated = result.data;
-      if (updated?.floorPlanImageUrl && updated?.exteriorImageUrl) {
-        setImagesPollActive(false);
+      if (updated?.floorPlanImageUrl && updated?.exteriorImageUrl && updated?.dxfContent) {
+        setAssetsPollActive(false);
       }
     }, 5000);
 
     const timeout = setTimeout(() => {
-      setImagesPollActive(false);
-      setImagesPollTimedOut(true);
+      setAssetsPollActive(false);
+      setAssetsPollTimedOut(true);
     }, 120000);
 
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [imagesPollActive, session?.id]);
+  }, [assetsPollActive, session?.id]);
+
+  const planReady = !!session?.generatedPlan;
+  const dxfReady = !!session?.dxfContent;
+  const floorPlanReady = !!session?.floorPlanImageUrl;
+  const exteriorReady = !!session?.exteriorImageUrl;
+  const allAssetsReady = planReady && dxfReady && floorPlanReady && exteriorReady;
 
   const handleFollowup = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -176,6 +182,43 @@ export default function Session() {
               )}
             </motion.div>
             
+            {!allAssetsReady && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.03 }}
+                className="bg-zinc-900/60 border border-zinc-700/40 rounded-2xl p-5"
+              >
+                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-zinc-700/30">
+                  <Package className="w-5 h-5 text-teal-400" />
+                  <h4 className="text-sm font-semibold text-zinc-200">الحزمة المعمارية</h4>
+                  {assetsPollActive && <Loader2 className="w-4 h-4 text-teal-500 animate-spin mr-auto" />}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  {[
+                    { ready: planReady, label: "المخطط" },
+                    { ready: dxfReady, label: "ملف DXF" },
+                    { ready: floorPlanReady, label: "صورة 2D" },
+                    { ready: exteriorReady, label: "واجهة 3D" },
+                  ].map(({ ready, label }) => {
+                    const timedOut = !ready && assetsPollTimedOut;
+                    return (
+                      <div key={label} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                        ready ? 'border-teal-500/30 bg-teal-500/10 text-teal-300' :
+                        timedOut ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' :
+                        'border-zinc-700/30 bg-zinc-800/50 text-zinc-500'
+                      }`}>
+                        {ready ? <CheckCircle2 className="w-4 h-4" /> :
+                         timedOut ? <AlertTriangle className="w-4 h-4" /> :
+                         <Loader2 className="w-4 h-4 animate-spin" />}
+                        <span>{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -188,14 +231,25 @@ export default function Session() {
               </div>
               <MarkdownRenderer content={session.generatedPlan} />
 
-              <div className="mt-8 pt-6 border-t border-zinc-800/50">
+              <div className="mt-8 pt-6 border-t border-zinc-800/50 flex flex-wrap items-center gap-4">
                 <button
                   onClick={handleDownloadDxf}
-                  className="flex items-center gap-3 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl transition-colors shadow-lg"
+                  disabled={!dxfReady && !planReady}
+                  className="flex items-center gap-3 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Download className="w-5 h-5" />
-                  <span className="font-medium">تحميل ملف أوتوكاد القابل للتعديل (.DXF)</span>
+                  {dxfReady ? (
+                    <Download className="w-5 h-5" />
+                  ) : (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  )}
+                  <span className="font-medium">تحميل ملف أوتوكاد (.DXF)</span>
                 </button>
+                {dxfReady && (
+                  <span className="flex items-center gap-1.5 text-sm text-teal-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                    جاهز
+                  </span>
+                )}
               </div>
             </motion.div>
 
@@ -209,6 +263,7 @@ export default function Session() {
                 <div className="px-5 py-3 border-b border-zinc-800/50 flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-teal-400" />
                   <span className="text-sm font-semibold text-zinc-200">المخطط ثنائي الأبعاد</span>
+                  {floorPlanReady && <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 mr-auto" />}
                 </div>
                 <div className="aspect-square bg-zinc-900/50 flex items-center justify-center">
                   {session.floorPlanImageUrl ? (
@@ -217,7 +272,7 @@ export default function Session() {
                       alt="المخطط ثنائي الأبعاد"
                       className="w-full h-full object-cover"
                     />
-                  ) : imagesPollTimedOut && !imagesPollActive ? (
+                  ) : assetsPollTimedOut && !assetsPollActive ? (
                     <div className="flex flex-col items-center gap-3 text-zinc-500 p-6 text-center">
                       <ImageIcon className="w-8 h-8 text-zinc-600" />
                       <span className="text-sm">تعذّر توليد المخطط. ستتم المحاولة عند الجلسة القادمة.</span>
@@ -240,6 +295,7 @@ export default function Session() {
                 <div className="px-5 py-3 border-b border-zinc-800/50 flex items-center gap-2">
                   <Building className="w-4 h-4 text-indigo-400" />
                   <span className="text-sm font-semibold text-zinc-200">الواجهة الخارجية</span>
+                  {exteriorReady && <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 mr-auto" />}
                 </div>
                 <div className="aspect-square bg-zinc-900/50 flex items-center justify-center">
                   {session.exteriorImageUrl ? (
@@ -248,7 +304,7 @@ export default function Session() {
                       alt="الواجهة الخارجية"
                       className="w-full h-full object-cover"
                     />
-                  ) : imagesPollTimedOut && !imagesPollActive ? (
+                  ) : assetsPollTimedOut && !assetsPollActive ? (
                     <div className="flex flex-col items-center gap-3 text-zinc-500 p-6 text-center">
                       <Building className="w-8 h-8 text-zinc-600" />
                       <span className="text-sm">تعذّر توليد الواجهة. ستتم المحاولة عند الجلسة القادمة.</span>

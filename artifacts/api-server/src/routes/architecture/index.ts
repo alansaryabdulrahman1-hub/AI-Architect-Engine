@@ -257,15 +257,11 @@ function buildArchitecturePrompt(
 
 1. **رفض أي سؤال خارج نطاق تخصصك:**
    إذا طرح المستخدم أي سؤال لا يتعلق بالهندسة المعمارية أو التصميم المعماري أو التخطيط العمراني أو البناء، يجب أن ترد حصرياً بالنص التالي دون أي إضافة:
-   "عذراً، تخصصي هو الاستشارات الهندسية والتخطيط المعماري فقط. يرجى تزويدي بأبعاد الأرض للبدء."
+   "عذراً، تخصصي هو الاستشارات الهندسية والتخطيط المعماري فقط."
 
-2. **التحقق من اكتمال البيانات قبل توليد أي مخطط:**
-   لا تقم بتوليد مخطط معماري إلا إذا توفرت جميع البيانات التالية:
-   - أبعاد الأرض الأربعة (شمال، جنوب، شرق، غرب)
-   - قطر/وتر تصحيح الزاوية (إن وُجد)
-   - الارتدادات (أمامي، جانبي، خلفي)
-   - عدد الأدوار
-   إذا كانت أي من هذه البيانات ناقصة، اطلب من المستخدم تزويدك بها قبل المتابعة.
+2. **قفل السياق — لا تُعِد طرح أي سؤال:**
+   جميع البيانات الهندسية والتصميمية (أبعاد الأرض، الارتدادات، عدد الأدوار، اتجاه الواجهة، نظام التكييف، الجيران، الميزانية، وغيرها) تم التحقق منها وتوفيرها أدناه بالكامل.
+   **ممنوع منعاً باتاً** أن تطلب تأكيد أو إعادة إدخال أي بيان تم تقديمه. ابدأ فوراً بالتوليف المعماري والتصميم باستخدام المعطيات المقدمة.
 
 3. **الالتزام بالتخصص المعماري:**
    جميع إجاباتك يجب أن تكون في إطار الهندسة المعمارية والتصميم والتخطيط فقط.
@@ -550,6 +546,16 @@ router.post("/sessions", async (req, res) => {
       sideWest: body.sideWest,
     }, fullPlan).catch((err) => {
       console.error("Background image generation failed:", err);
+    });
+
+    generateAndStoreDxf(session.id, fullPlan, {
+      sideNorth: body.sideNorth,
+      sideSouth: body.sideSouth,
+      sideEast: body.sideEast,
+      sideWest: body.sideWest,
+      buildingSubtype: body.buildingSubtype,
+    }).catch((err) => {
+      console.error("Background DXF generation failed:", err);
     });
 
     res.end();
@@ -885,6 +891,47 @@ function extractRoomSummary(planText: string): string {
   return "";
 }
 
+async function generateAndStoreDxf(
+  sessionId: number,
+  planText: string,
+  fallbackDims: {
+    sideNorth: number;
+    sideSouth: number;
+    sideEast: number;
+    sideWest: number;
+    buildingSubtype: string;
+  },
+) {
+  const rows = parseCoordinatesTable(planText);
+  let dxfContent: string;
+
+  if (rows.length > 0) {
+    dxfContent = generateDxf(rows);
+  } else {
+    const d = new Drawing();
+    d.setUnits("Meters");
+    d.addLayer("WALLS", Drawing.ACI.WHITE, "CONTINUOUS");
+    d.setActiveLayer("WALLS");
+
+    const w = ((fallbackDims.sideNorth || 0) + (fallbackDims.sideSouth || 0)) / 2 || 20;
+    const h = ((fallbackDims.sideEast || 0) + (fallbackDims.sideWest || 0)) / 2 || 15;
+
+    d.drawLine(0, 0, w, 0);
+    d.drawLine(w, 0, w, h);
+    d.drawLine(w, h, 0, h);
+    d.drawLine(0, h, 0, 0);
+    d.drawText(w / 2, h / 2, 0.5, 0, transliterateLabel(fallbackDims.buildingSubtype || "Building"));
+
+    dxfContent = injectDxfHeaders(d.toDxfString());
+    dxfContent = stripNonAscii(dxfContent);
+  }
+
+  await db
+    .update(architectureSessions)
+    .set({ dxfContent })
+    .where(eq(architectureSessions.id, sessionId));
+}
+
 async function generateSessionImages(
   sessionId: number,
   session: {
@@ -1001,35 +1048,39 @@ router.get("/sessions/:id/dxf", async (req, res) => {
       return;
     }
 
-    const rows = parseCoordinatesTable(session.generatedPlan);
+    let dxfContent = session.dxfContent;
 
-    if (rows.length === 0) {
-      const d = new Drawing();
-      d.setUnits("Meters");
-      d.addLayer("WALLS", Drawing.ACI.WHITE, "CONTINUOUS");
-      d.setActiveLayer("WALLS");
+    if (!dxfContent) {
+      const rows = parseCoordinatesTable(session.generatedPlan);
 
-      const w = ((session.sideNorth || 0) + (session.sideSouth || 0)) / 2 || 20;
-      const h = ((session.sideEast || 0) + (session.sideWest || 0)) / 2 || 15;
+      if (rows.length === 0) {
+        const d = new Drawing();
+        d.setUnits("Meters");
+        d.addLayer("WALLS", Drawing.ACI.WHITE, "CONTINUOUS");
+        d.setActiveLayer("WALLS");
 
-      d.drawLine(0, 0, w, 0);
-      d.drawLine(w, 0, w, h);
-      d.drawLine(w, h, 0, h);
-      d.drawLine(0, h, 0, 0);
+        const w = ((session.sideNorth || 0) + (session.sideSouth || 0)) / 2 || 20;
+        const h = ((session.sideEast || 0) + (session.sideWest || 0)) / 2 || 15;
 
-      d.drawText(w / 2, h / 2, 0.5, 0, transliterateLabel(session.buildingSubtype || "Building"));
+        d.drawLine(0, 0, w, 0);
+        d.drawLine(w, 0, w, h);
+        d.drawLine(w, h, 0, h);
+        d.drawLine(0, h, 0, 0);
 
-      let dxfContent = injectDxfHeaders(d.toDxfString());
-      dxfContent = stripNonAscii(dxfContent);
-      const buf = Buffer.from(dxfContent, "ascii");
-      res.setHeader("Content-Type", "application/dxf; charset=ascii");
-      res.setHeader("Content-Disposition", `attachment; filename="plan-${id}.dxf"`);
-      res.setHeader("Content-Length", buf.length.toString());
-      res.send(buf);
-      return;
+        d.drawText(w / 2, h / 2, 0.5, 0, transliterateLabel(session.buildingSubtype || "Building"));
+
+        dxfContent = injectDxfHeaders(d.toDxfString());
+        dxfContent = stripNonAscii(dxfContent);
+      } else {
+        dxfContent = generateDxf(rows);
+      }
+
+      db.update(architectureSessions)
+        .set({ dxfContent })
+        .where(eq(architectureSessions.id, id))
+        .catch(() => {});
     }
 
-    const dxfContent = generateDxf(rows);
     const buf = Buffer.from(dxfContent, "ascii");
     res.setHeader("Content-Type", "application/dxf; charset=ascii");
     res.setHeader("Content-Disposition", `attachment; filename="plan-${id}.dxf"`);
@@ -1091,7 +1142,7 @@ router.post("/sessions/:id/followup", async (req, res) => {
 
     chatMessages.push({
       role: "system",
-      content: `تذكير: أنت **المصمم المعماري الخبير**. تخصصك الوحيد هو الاستشارات الهندسية والتخطيط المعماري. إذا طرح المستخدم أي سؤال خارج هذا النطاق، أجب حصرياً بـ: "عذراً، تخصصي هو الاستشارات الهندسية والتخطيط المعماري فقط. يرجى تزويدي بأبعاد الأرض للبدء." لا تخرج عن هذا التخصص تحت أي ظرف.`,
+      content: `تذكير: أنت **المصمم المعماري الخبير**. تخصصك الوحيد هو الاستشارات الهندسية والتخطيط المعماري. إذا طرح المستخدم أي سؤال خارج هذا النطاق، أجب حصرياً بـ: "عذراً، تخصصي هو الاستشارات الهندسية والتخطيط المعماري فقط." لا تخرج عن هذا التخصص تحت أي ظرف. جميع البيانات الأساسية (أبعاد الأرض، الارتدادات، عدد الأدوار) مُقدمة مسبقاً — لا تطلب إعادة إدخالها.`,
     });
 
     if (imageUrls.length > 0) {

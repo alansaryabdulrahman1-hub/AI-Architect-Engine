@@ -37,6 +37,7 @@ export const architectureSessions = pgTable("architecture_sessions", {
   groundLevelDifference: real("ground_level_difference").default(0),
   additionalRequirements: text("additional_requirements"),
   generatedPlan: text("generated_plan").notNull().default(""),
+  dxfContent: text("dxf_content"),
   floorPlanImageUrl: text("floor_plan_image_url"),
   exteriorImageUrl: text("exterior_image_url"),
   conversationId: integer("conversation_id")

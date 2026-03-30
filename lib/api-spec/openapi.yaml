@@ -420,6 +420,10 @@ components:
           description: Budget range (low, medium, high, premium)
         generatedPlan:
           type: string
+        dxfContent:
+          type: string
+          nullable: true
+          description: Pre-generated DXF file content (auto-generated after plan completion)
         floorPlanImageUrl:
           type: string
           nullable: true

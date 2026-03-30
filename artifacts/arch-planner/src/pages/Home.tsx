@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, Sparkles, Loader2, AlertTriangle, Info, ChevronDown, ChevronUp, MapPin, Landmark, Users } from "lucide-react";
+import { Building2, Home as HomeIcon, LayoutGrid, Store, Building, Briefcase, Sparkles, Loader2, AlertTriangle, Info, ChevronDown, ChevronUp, MapPin, Landmark, Users, CheckCircle2 } from "lucide-react";
 import { useGenerateArchitecturePlan } from "@/hooks/use-architecture-stream";
 import {
   type CreateArchitectureSessionBody,
@@ -168,6 +168,123 @@ function CollapsibleSection({ title, icon: Icon, iconColor, children, defaultOpe
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+const GENERATION_PHASES = [
+  { label: "تحليل هندسة الأرض...", duration: 3000 },
+  { label: "حساب التوزيع المساحي...", duration: 6000 },
+  { label: "تصميم المخطط المعماري...", duration: 10000 },
+  { label: "إعداد الجداول والإحداثيات...", duration: 18000 },
+  { label: "كتابة سكربت AutoCAD...", duration: 25000 },
+  { label: "مراجعة القواعد الهندسية...", duration: 35000 },
+];
+
+function GeneratingView({
+  formData,
+  sideNorth,
+  sideSouth,
+  sideEast,
+  sideWest,
+  bedroomCount,
+  content,
+  isGenerating,
+}: {
+  formData: { buildingType: string; buildingSubtype: string; area: number; floors: string };
+  sideNorth: string;
+  sideSouth: string;
+  sideEast: string;
+  sideWest: string;
+  bedroomCount: string;
+  content: string;
+  isGenerating: boolean;
+}) {
+  const [currentPhase, setCurrentPhase] = useState(0);
+  const startTimeRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!isGenerating) return;
+    startTimeRef.current = Date.now();
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTimeRef.current;
+      let phase = 0;
+      for (let i = GENERATION_PHASES.length - 1; i >= 0; i--) {
+        if (elapsed >= GENERATION_PHASES[i].duration) {
+          phase = i;
+          break;
+        }
+      }
+      setCurrentPhase(phase);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+
+  return (
+    <motion.div
+      key="generating"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex-1 w-full max-w-4xl mx-auto flex flex-col"
+    >
+      <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 mb-6">
+        <div className="flex items-center gap-3 mb-3 pb-2 border-b border-indigo-500/10">
+          <Building className="w-5 h-5 text-indigo-400" />
+          <h4 className="text-sm font-semibold text-indigo-300">ملخص الطلب</h4>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-zinc-300">
+          <div><span className="text-zinc-500">النوع: </span>{formData.buildingSubtype || formData.buildingType}</div>
+          <div><span className="text-zinc-500">المساحة: </span>{formData.area} م²</div>
+          <div><span className="text-zinc-500">الأدوار: </span>{formData.floors}</div>
+          {sideNorth && <div><span className="text-zinc-500">شمال: </span>{sideNorth} م</div>}
+          {sideSouth && <div><span className="text-zinc-500">جنوب: </span>{sideSouth} م</div>}
+          {sideEast && <div><span className="text-zinc-500">شرق: </span>{sideEast} م</div>}
+          {sideWest && <div><span className="text-zinc-500">غرب: </span>{sideWest} م</div>}
+          {bedroomCount && <div><span className="text-zinc-500">غرف النوم: </span>{bedroomCount}</div>}
+        </div>
+      </div>
+
+      <div className="mb-6 space-y-2">
+        {GENERATION_PHASES.map((phase, idx) => {
+          const isActive = idx === currentPhase && isGenerating;
+          const isComplete = idx < currentPhase || !isGenerating;
+          return (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: idx <= currentPhase || !isGenerating ? 1 : 0.3, x: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className={`flex items-center gap-3 px-4 py-2 rounded-xl text-sm transition-colors ${
+                isActive ? 'bg-teal-500/10 border border-teal-500/20 text-teal-300' :
+                isComplete ? 'text-zinc-500' : 'text-zinc-600'
+              }`}
+            >
+              {isComplete ? (
+                <CheckCircle2 className="w-4 h-4 text-teal-500/60 shrink-0" />
+              ) : isActive ? (
+                <Loader2 className="w-4 h-4 text-teal-400 animate-spin shrink-0" />
+              ) : (
+                <div className="w-4 h-4 rounded-full border border-zinc-700 shrink-0" />
+              )}
+              <span>{phase.label}</span>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="glass-panel rounded-3xl p-6 md:p-8 min-h-[400px] flex-1">
+        <MarkdownRenderer content={content} />
+
+        {isGenerating && (
+          <div className="mt-6 flex items-center gap-2 text-zinc-500">
+            <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0s" }}></div>
+            <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+            <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -778,52 +895,16 @@ export default function Home() {
             </form>
           </motion.div>
         ) : (
-          <motion.div
-            key="generating"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 w-full max-w-4xl mx-auto flex flex-col"
-          >
-            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 mb-6">
-              <div className="flex items-center gap-3 mb-3 pb-2 border-b border-indigo-500/10">
-                <Building className="w-5 h-5 text-indigo-400" />
-                <h4 className="text-sm font-semibold text-indigo-300">ملخص الطلب</h4>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-zinc-300">
-                <div><span className="text-zinc-500">النوع: </span>{formData.buildingSubtype || formData.buildingType}</div>
-                <div><span className="text-zinc-500">المساحة: </span>{formData.area} م²</div>
-                <div><span className="text-zinc-500">الأدوار: </span>{formData.floors}</div>
-                {sideNorth && <div><span className="text-zinc-500">شمال: </span>{sideNorth} م</div>}
-                {sideSouth && <div><span className="text-zinc-500">جنوب: </span>{sideSouth} م</div>}
-                {sideEast && <div><span className="text-zinc-500">شرق: </span>{sideEast} م</div>}
-                {sideWest && <div><span className="text-zinc-500">غرب: </span>{sideWest} م</div>}
-                {bedroomCount && <div><span className="text-zinc-500">غرف النوم: </span>{bedroomCount}</div>}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 mb-6">
-              <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-teal-500/10 border border-teal-500/20">
-                <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
-                <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping"></div>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">جاري إعداد المخطط...</h3>
-                <p className="text-zinc-400 text-sm">يقوم الذكاء الاصطناعي بتوزيع المساحات وتحليل المتطلبات وإعداد سكربت AutoCAD</p>
-              </div>
-            </div>
-
-            <div className="glass-panel rounded-3xl p-6 md:p-8 min-h-[400px] flex-1">
-              <MarkdownRenderer content={content} />
-
-              {isGenerating && (
-                <div className="mt-6 flex items-center gap-2 text-zinc-500">
-                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0s" }}></div>
-                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                </div>
-              )}
-            </div>
-          </motion.div>
+          <GeneratingView
+            formData={formData}
+            sideNorth={sideNorth}
+            sideSouth={sideSouth}
+            sideEast={sideEast}
+            sideWest={sideWest}
+            bedroomCount={bedroomCount}
+            content={content}
+            isGenerating={isGenerating}
+          />
         )}
       </AnimatePresence>
     </div>
