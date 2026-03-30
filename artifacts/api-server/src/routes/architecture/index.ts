@@ -586,6 +586,9 @@ router.get("/sessions/:id", async (req, res) => {
       res.status(404).json({ error: "Session not found" });
       return;
     }
+    if (!session.dxfContent && session.generatedPlan) {
+      generateAndStoreDxf(session.id, session.generatedPlan, req.log).catch(() => {});
+    }
     res.json(sessionWithDxfFlag(session));
   } catch (err) {
     req.log.error({ err }, "Failed to get architecture session");
