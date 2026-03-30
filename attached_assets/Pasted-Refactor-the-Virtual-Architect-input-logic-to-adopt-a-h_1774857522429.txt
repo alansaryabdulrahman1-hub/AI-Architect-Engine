@@ -1,0 +1,36 @@
+Refactor the 'Virtual Architect' input logic to adopt a hierarchical data validation system. The goal is to separate Strict Geometric Constraints from Flexible Design Preferences. Please implement the following updates:
+
+1. Core Geometric Data (Mandatory & Strict)
+Land Boundaries: Fields for (North, South, East, West) in meters.
+
+Diagonal/Hypotenuse (The 'Watar'): This field should be Conditional. Only require it if the user indicates the land has non-90° angles (irregular shapes) to ensure geometric accuracy in the CAD generation.
+
+Regulatory Setbacks: Mandatory fields for (Front/Street, Side/Neighbors, Rear) based on local building codes.
+
+Legal Context: Add fields for 'Deed Number' (Suk) and 'Plot Number' to reference official street widths and neighborhood layouts.
+
+2. Site & Environmental Context (New Features)
+Neighbor Status: For each boundary (East/West/South), add a toggle: [Already Built / Vacant Land]. If 'Built', add a sub-field to note neighbor window/ventilation locations to optimize privacy.
+
+Soil Report: Add an optional file upload or dropdown for soil type (Rocky, Sandy, Sabkha) to influence future structural foundation suggestions.
+
+Elevation Delta: A mandatory field for 'Level Difference from Street' (in cm) to calculate entry steps and garage ramp slopes.
+
+3. User Program & Economic Constraints (Flexible/Optional)
+Estimated Budget: Add a mandatory 'Budget Range' field. This must act as a weight for the design logic (e.g., favoring simple spans for lower budgets vs. complex cantilevers for high budgets).
+
+Architectural Program: Change (Staircase Location, AC System, Exact Room Count) to Optional.
+
+Design Logic: If these are left blank, the Agent should generate an 'Optimized Suggestion' based on the land's orientation (e.g., placing the staircase in the least-lit area to save facades for living spaces).
+
+4. Functional Requirements:
+Allow the generation of the Initial Sketch as soon as Geometric Data and Setbacks are provided.
+
+Integrate 'Frontage Orientation' directly with the building massing logic to prioritize natural cooling and energy efficiency."
+
+Why this version works better for your Replit project:
+Conditional Logic: It tells the code not to get stuck if the user doesn't know where the stairs go.
+
+Weighted Budget: It introduces the concept of Budget not just as a label, but as a "weight" that changes how the architect thinks.
+
+Geometric Precision: By emphasizing the Diagonal (Watar), you ensure the DXF/AutoCAD export you're working on won't produce "impossible" shapes for irregular lands.
