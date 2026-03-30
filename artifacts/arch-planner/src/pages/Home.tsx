@@ -572,9 +572,26 @@ export default function Home() {
             key="generating"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 w-full max-w-4xl mx-auto"
+            className="flex-1 w-full max-w-4xl mx-auto flex flex-col"
           >
-            <div className="flex items-center gap-4 mb-8">
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 mb-6">
+              <div className="flex items-center gap-3 mb-3 pb-2 border-b border-indigo-500/10">
+                <Building className="w-5 h-5 text-indigo-400" />
+                <h4 className="text-sm font-semibold text-indigo-300">ملخص الطلب</h4>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-zinc-300">
+                <div><span className="text-zinc-500">النوع: </span>{formData.buildingSubtype || formData.buildingType}</div>
+                <div><span className="text-zinc-500">المساحة: </span>{formData.area} م²</div>
+                <div><span className="text-zinc-500">الأدوار: </span>{formData.floors}</div>
+                {sideNorth && <div><span className="text-zinc-500">شمال: </span>{sideNorth} م</div>}
+                {sideSouth && <div><span className="text-zinc-500">جنوب: </span>{sideSouth} م</div>}
+                {sideEast && <div><span className="text-zinc-500">شرق: </span>{sideEast} م</div>}
+                {sideWest && <div><span className="text-zinc-500">غرب: </span>{sideWest} م</div>}
+                {bedroomCount && <div><span className="text-zinc-500">غرف النوم: </span>{bedroomCount}</div>}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 mb-6">
               <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-teal-500/10 border border-teal-500/20">
                 <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
                 <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping"></div>
@@ -585,7 +602,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="glass-panel rounded-3xl p-6 md:p-8 min-h-[400px]">
+            <div className="glass-panel rounded-3xl p-6 md:p-8 min-h-[400px] flex-1">
               <MarkdownRenderer content={content} />
 
               {isGenerating && (

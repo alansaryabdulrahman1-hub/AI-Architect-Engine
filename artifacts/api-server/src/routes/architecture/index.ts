@@ -654,6 +654,10 @@ function injectDxfHeaders(dxfStr: string): string {
         "  1",
         "AC1027",
         "  9",
+        "$DWGCODEPAGE",
+        "  3",
+        "ANSI_1252",
+        "  9",
         "$INSUNITS",
         " 70",
         "     6",
@@ -661,11 +665,64 @@ function injectDxfHeaders(dxfStr: string): string {
         "$MEASUREMENT",
         " 70",
         "     1",
+        "  9",
+        "$LUNITS",
+        " 70",
+        "     2",
+        "  9",
+        "$LUPREC",
+        " 70",
+        "     4",
       ].join("\n");
       dxfStr = dxfStr.slice(0, endSecIndex) + acadverBlock + "\n" + dxfStr.slice(endSecIndex);
     }
   }
+
+  const tablesIndex = dxfStr.indexOf("TABLE");
+  if (tablesIndex !== -1) {
+    const styleTable = [
+      "  0",
+      "TABLE",
+      "  2",
+      "STYLE",
+      " 70",
+      "     1",
+      "  0",
+      "STYLE",
+      "  2",
+      "Standard",
+      " 70",
+      "     0",
+      " 40",
+      "0.0",
+      " 41",
+      "1.0",
+      " 50",
+      "0.0",
+      " 71",
+      "     0",
+      " 42",
+      "0.25",
+      "  3",
+      "txt.shx",
+      "  4",
+      "",
+      "  0",
+      "ENDTAB",
+    ].join("\n");
+
+    const firstTableEnd = dxfStr.indexOf("ENDTAB", tablesIndex);
+    if (firstTableEnd !== -1) {
+      const insertAfter = firstTableEnd + "ENDTAB".length;
+      dxfStr = dxfStr.slice(0, insertAfter) + "\n" + styleTable + "\n" + dxfStr.slice(insertAfter);
+    }
+  }
+
   return dxfStr;
+}
+
+function stripNonAscii(str: string): string {
+  return str.replace(/[^\x00-\x7F]/g, "");
 }
 
 function generateDxf(rows: CoordinateRow[]): string {
@@ -715,7 +772,10 @@ function generateDxf(rows: CoordinateRow[]): string {
     }
   }
 
-  return injectDxfHeaders(d.toDxfString());
+  let dxfStr = d.toDxfString();
+  dxfStr = injectDxfHeaders(dxfStr);
+  dxfStr = stripNonAscii(dxfStr);
+  return dxfStr;
 }
 
 function extractRoomSummary(planText: string): string {
@@ -773,17 +833,38 @@ async function generateSessionImages(
     : "";
 
   try {
+    const wallCoords = coordinates
+      .filter(r => getLayerForElement(r.element) === "WALLS")
+      .slice(0, 15)
+      .map(r => `${transliterateLabel(r.element)}: (${r.startX},${r.startY}) to (${r.endX},${r.endY})`)
+      .join("; ");
+
+    const roomLayout = coordinates
+      .filter(r => getLayerForElement(r.element) !== "WALLS")
+      .slice(0, 10)
+      .map(r => {
+        const label = transliterateLabel(r.element);
+        const cx = ((r.startX + r.endX) / 2).toFixed(1);
+        const cy = ((r.startY + r.endY) / 2).toFixed(1);
+        return `${label} centered at (${cx},${cy})`;
+      })
+      .join("; ");
+
+    const floorPlanPrompt = `Professional 2D architectural floor plan, top-down orthographic view, precise technical blueprint style with white lines on dark navy background. Building: ${typeLabel} - ${session.buildingSubtype}. Exact plot: ${avgWidth.toFixed(1)}m wide x ${avgDepth.toFixed(1)}m deep, total area ${session.area}m². Origin (0,0) at bottom-left corner.${wallCoords ? ` Walls: ${wallCoords}.` : ""}${elemCounts}${roomLayout ? ` Room positions: ${roomLayout}.` : roomsListed} All rooms must be labeled with English names. Show precise wall thicknesses (0.2m exterior, 0.15m interior), door swings as arcs, window openings as double lines. Include dimension lines in meters. Clean CAD-quality line work, no perspective, no shadows.`;
+
+    const exteriorPrompt = `Professional 3D exterior architectural rendering of a modern ${typeLabel} - ${session.buildingSubtype}. Facade facing ${facadeLabel}. Building footprint exactly ${avgWidth.toFixed(1)}m wide x ${avgDepth.toFixed(1)}m deep, total area ${session.area}m².${doorCount > 0 ? ` Main entrance with ${doorCount} door openings visible on the ${facadeLabel} facade.` : ""}${windowCount > 0 ? ` ${windowCount} windows arranged symmetrically across the facade.` : ""} The building proportions must match the floor plan footprint ratio (${(avgWidth / avgDepth).toFixed(2)}:1 width-to-depth). Contemporary Middle Eastern architectural style with clean geometric forms, natural stone cladding and white plaster finish, flat roof with parapet details. Landscaped front yard with desert-adapted plants, paved driveway. Golden hour lighting from ${session.facadeDirection === "north" ? "south" : session.facadeDirection === "south" ? "north" : session.facadeDirection === "east" ? "west" : "east"}. Photorealistic architectural visualization, eye-level perspective.`;
+
     const [floorPlanResult, exteriorResult] = await Promise.allSettled([
       openai.images.generate({
         model: "dall-e-3",
-        prompt: `Professional 2D architectural floor plan, top-down orthographic view, clean blueprint style with white lines on dark blue background. Building type: ${typeLabel} - ${session.buildingSubtype}. Plot dimensions: ${avgWidth.toFixed(1)}m wide x ${avgDepth.toFixed(1)}m deep, total area ${session.area}m².${elemCounts}${roomsListed}${layoutDescription} Show all rooms with labeled names, wall thicknesses, door swings, and window openings. Precise technical CAD drawing style with dimensions annotated.`,
+        prompt: floorPlanPrompt,
         n: 1,
         size: "1024x1024",
         quality: "standard",
       }),
       openai.images.generate({
         model: "dall-e-3",
-        prompt: `Professional 3D exterior architectural rendering of a modern ${typeLabel} - ${session.buildingSubtype}. Facade facing ${facadeLabel}. Building footprint exactly ${avgWidth.toFixed(1)}m wide x ${avgDepth.toFixed(1)}m deep, total built area ${session.area}m².${doorCount > 0 ? ` Main entrance with ${doorCount} door openings visible.` : ""}${windowCount > 0 ? ` ${windowCount} windows distributed across the facade.` : ""} Contemporary Middle Eastern architectural style with clean geometric forms, natural stone and white plaster finish. Landscape with desert-adapted plants. Golden hour lighting. Photorealistic rendering.`,
+        prompt: exteriorPrompt,
         n: 1,
         size: "1024x1024",
         quality: "standard",
@@ -841,17 +922,22 @@ router.get("/sessions/:id/dxf", async (req, res) => {
 
       d.drawText(w / 2, h / 2, 0.5, 0, transliterateLabel(session.buildingSubtype || "Building"));
 
-      const dxfContent = injectDxfHeaders(d.toDxfString());
-      res.setHeader("Content-Type", "application/dxf");
+      let dxfContent = injectDxfHeaders(d.toDxfString());
+      dxfContent = stripNonAscii(dxfContent);
+      const buf = Buffer.from(dxfContent, "ascii");
+      res.setHeader("Content-Type", "application/dxf; charset=ascii");
       res.setHeader("Content-Disposition", `attachment; filename="plan-${id}.dxf"`);
-      res.send(dxfContent);
+      res.setHeader("Content-Length", buf.length.toString());
+      res.send(buf);
       return;
     }
 
     const dxfContent = generateDxf(rows);
-    res.setHeader("Content-Type", "application/dxf");
+    const buf = Buffer.from(dxfContent, "ascii");
+    res.setHeader("Content-Type", "application/dxf; charset=ascii");
     res.setHeader("Content-Disposition", `attachment; filename="plan-${id}.dxf"`);
-    res.send(dxfContent);
+    res.setHeader("Content-Length", buf.length.toString());
+    res.send(buf);
   } catch (err) {
     req.log.error({ err }, "Failed to generate DXF");
     res.status(500).json({ error: "Failed to generate DXF file" });
