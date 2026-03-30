@@ -156,11 +156,11 @@ export const ListArchitectureSessionsResponseItem = zod.object({
     .optional()
     .describe("Budget range (low, medium, high, premium)"),
   generatedPlan: zod.string(),
-  dxfContent: zod
-    .string()
-    .nullish()
+  dxfReady: zod
+    .boolean()
+    .optional()
     .describe(
-      "Pre-generated DXF file content (auto-generated after plan completion)",
+      "Whether the DXF file has been pre-generated and is ready for download",
     ),
   floorPlanImageUrl: zod.string().nullish(),
   exteriorImageUrl: zod.string().nullish(),
@@ -343,11 +343,11 @@ export const GetArchitectureSessionResponse = zod.object({
     .optional()
     .describe("Budget range (low, medium, high, premium)"),
   generatedPlan: zod.string(),
-  dxfContent: zod
-    .string()
-    .nullish()
+  dxfReady: zod
+    .boolean()
+    .optional()
     .describe(
-      "Pre-generated DXF file content (auto-generated after plan completion)",
+      "Whether the DXF file has been pre-generated and is ready for download",
     ),
   floorPlanImageUrl: zod.string().nullish(),
   exteriorImageUrl: zod.string().nullish(),

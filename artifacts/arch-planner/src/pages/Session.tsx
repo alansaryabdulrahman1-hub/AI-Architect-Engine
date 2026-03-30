@@ -30,7 +30,7 @@ export default function Session() {
   }, [dbMessages, answerStream]);
 
   useEffect(() => {
-    if (session && (!session.floorPlanImageUrl || !session.exteriorImageUrl || !session.dxfContent)) {
+    if (session && (!session.floorPlanImageUrl || !session.exteriorImageUrl || !session.dxfReady)) {
       setAssetsPollActive(true);
       setAssetsPollTimedOut(false);
     }
@@ -42,7 +42,7 @@ export default function Session() {
     const interval = setInterval(async () => {
       const result = await refetchSession();
       const updated = result.data;
-      if (updated?.floorPlanImageUrl && updated?.exteriorImageUrl && updated?.dxfContent) {
+      if (updated?.floorPlanImageUrl && updated?.exteriorImageUrl && updated?.dxfReady) {
         setAssetsPollActive(false);
       }
     }, 5000);
@@ -59,7 +59,7 @@ export default function Session() {
   }, [assetsPollActive, session?.id]);
 
   const planReady = !!session?.generatedPlan;
-  const dxfReady = !!session?.dxfContent;
+  const dxfReady = !!session?.dxfReady;
   const floorPlanReady = !!session?.floorPlanImageUrl;
   const exteriorReady = !!session?.exteriorImageUrl;
   const allAssetsReady = planReady && dxfReady && floorPlanReady && exteriorReady;

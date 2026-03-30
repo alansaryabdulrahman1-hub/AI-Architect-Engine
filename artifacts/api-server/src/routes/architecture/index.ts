@@ -341,13 +341,18 @@ function buildImageContentParts(imageDataUrls: string[]): ContentPart[] {
   }));
 }
 
+function sessionWithDxfFlag(session: typeof architectureSessions.$inferSelect) {
+  const { dxfContent, ...rest } = session;
+  return { ...rest, dxfReady: dxfContent != null };
+}
+
 router.get("/sessions", async (req, res) => {
   try {
     const sessions = await db
       .select()
       .from(architectureSessions)
       .orderBy(architectureSessions.createdAt);
-    res.json(sessions);
+    res.json(sessions.map(sessionWithDxfFlag));
   } catch (err) {
     req.log.error({ err }, "Failed to list architecture sessions");
     res.status(500).json({ error: "Failed to list sessions" });
@@ -581,7 +586,7 @@ router.get("/sessions/:id", async (req, res) => {
       res.status(404).json({ error: "Session not found" });
       return;
     }
-    res.json(session);
+    res.json(sessionWithDxfFlag(session));
   } catch (err) {
     req.log.error({ err }, "Failed to get architecture session");
     res.status(500).json({ error: "Failed to get session" });
