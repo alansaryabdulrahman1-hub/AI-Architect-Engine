@@ -1,0 +1,37 @@
+لضمان تنفيذ هذه المتطلبات التقنية المعقدة داخل Replit Agent، نحتاج إلى برومبت يركز على "تدفق البيانات" (Data Flow) و"استمرارية الحالة" (State Management)، لضمان عدم تكرار الأسئلة وتحويل المدخلات مباشرة إلى مخرجات هندسية (DXF وصور).
+
+إليك البرومبت الاحترافي باللغة الإنجليزية (لأفضل أداء مع ريبلت):
+
+Replit Agent Prompt: Seamless Architectural Generation & DXF Export
+Copy and paste this into Replit Agent:
+
+"Refactor the application workflow to ensure a 'Single-Entry, Full-Generation' pipeline. Implement the following core logic:
+
+1. Data Persistence & Prompt Integration
+Zero-Redundancy Logic: All data captured in the home page (Geometry, Setbacks, Site Context, Budget, and Program) must be injected directly into the initial AI System Prompt.
+
+Context Locking: The AI must NOT re-ask or confirm any data already provided in the form. It should proceed immediately to architectural synthesis using the provided parameters.
+
+2. UI/UX: Input Display & Processing State
+Input Mirroring: Immediately after the user submits the form, display a clean 'Executive Summary' of their inputs (e.g., Land: 300sqm, Orientation: North, Budget: High).
+
+Thinking State: Show a clear 'Processing Architectural Logic...' or 'Thinking' indicator while the engine computes the spatial layout, to manage user expectations during complex generation.
+
+3. Multi-Modal Output Delivery (The 'Big Reveal')
+Once the engine completes the planning, it must deliver a single 'Architectural Package' containing:
+
+Proposed Architectural Plan: A textual and structured breakdown of the spatial solution.
+
+2D Floor Plan (Image): A high-fidelity visual representation of the internal layout.
+
+3D Exterior Facade (Image): A visualization of the building's exterior that strictly matches the 2D floor plan's footprint and orientation.
+
+4. Guaranteed DXF Export (Mandatory Step)
+Auto-Generation: Upon completing the plan, the system MUST automatically generate a downloadable .DXF file.
+
+Verification: Ensure the DXF file contains the accurate geometry (walls, openings, setbacks) based on the specific inputs (especially the 'Watar' for irregular plots).
+
+Functional Check: The DXF must be valid, non-corrupt, and ready for use in AutoCAD/professional software.
+
+Technical Instruction for the Agent:
+'Ensure that the transition from the Home Form to the Session Page triggers the DXF generation endpoint and the image generation workers simultaneously, presenting them as a unified completed project to the user.'"
