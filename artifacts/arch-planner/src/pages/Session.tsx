@@ -8,6 +8,11 @@ import { Send, User, Bot, Loader2, FileText, Building, FileBox, MessageSquare, D
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 
+interface PendingMessage {
+  text: string;
+  images?: string[];
+}
+
 export default function Session() {
   const { id } = useParams<{ id: string }>();
   const sessionId = parseInt(id);
@@ -17,17 +22,18 @@ export default function Session() {
     session?.conversationId ?? 0
   );
   
-  const { askFollowup, isAnswering, answerStream } = useArchitectureFollowup();
+  const { askFollowup, isAnswering, answerStream, generatedImages } = useArchitectureFollowup();
   
   const [question, setQuestion] = useState("");
   const [followupImages, setFollowupImages] = useState<string[]>([]);
+  const [pendingUserMessage, setPendingUserMessage] = useState<PendingMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [assetsPollActive, setAssetsPollActive] = useState(false);
   const [assetsPollTimedOut, setAssetsPollTimedOut] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [dbMessages, answerStream]);
+  }, [dbMessages, answerStream, pendingUserMessage, generatedImages]);
 
   useEffect(() => {
     if (session && (!session.floorPlanImageUrl || !session.exteriorImageUrl || !session.dxfReady)) {
@@ -59,10 +65,10 @@ export default function Session() {
   }, [assetsPollActive, session?.id]);
 
   const planReady = !!session?.generatedPlan;
-  const dxfReady = !!session?.dxfReady;
+  const ifcReady = !!session?.dxfReady;
   const floorPlanReady = !!session?.floorPlanImageUrl;
   const exteriorReady = !!session?.exteriorImageUrl;
-  const allAssetsReady = planReady && dxfReady && floorPlanReady && exteriorReady;
+  const allAssetsReady = planReady && ifcReady && floorPlanReady && exteriorReady;
 
   const handleFollowup = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -73,9 +79,17 @@ export default function Session() {
     setQuestion("");
     setFollowupImages([]);
     
-    await askFollowup(sessionId, currentQ, currentImages.length > 0 ? currentImages : undefined, () => {
+    setPendingUserMessage({ text: currentQ, images: currentImages.length > 0 ? currentImages : undefined });
+    
+    try {
+      await askFollowup(sessionId, currentQ, currentImages.length > 0 ? currentImages : undefined, () => {
+        setPendingUserMessage(null);
+        refetchMessages();
+      });
+    } catch {
+      setPendingUserMessage(null);
       refetchMessages();
-    });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -85,10 +99,10 @@ export default function Session() {
     }
   };
 
-  const handleDownloadDxf = () => {
+  const handleDownloadIfc = () => {
     const link = document.createElement("a");
-    link.href = `/api/architecture/sessions/${sessionId}/dxf`;
-    link.download = `plan-${sessionId}.dxf`;
+    link.href = `/api/architecture/sessions/${sessionId}/ifc`;
+    link.download = `plan-${sessionId}.ifc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -197,7 +211,7 @@ export default function Session() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                   {[
                     { ready: planReady, label: "المخطط" },
-                    { ready: dxfReady, label: "ملف DXF" },
+                    { ready: ifcReady, label: "ملف IFC" },
                     { ready: floorPlanReady, label: "صورة 2D" },
                     { ready: exteriorReady, label: "واجهة 3D" },
                   ].map(({ ready, label }) => {
@@ -233,18 +247,18 @@ export default function Session() {
 
               <div className="mt-8 pt-6 border-t border-zinc-800/50 flex flex-wrap items-center gap-4">
                 <button
-                  onClick={handleDownloadDxf}
-                  disabled={!dxfReady && !planReady}
+                  onClick={handleDownloadIfc}
+                  disabled={!ifcReady && !planReady}
                   className="flex items-center gap-3 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {dxfReady ? (
+                  {ifcReady ? (
                     <Download className="w-5 h-5" />
                   ) : (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   )}
-                  <span className="font-medium">تحميل ملف أوتوكاد (.DXF)</span>
+                  <span className="font-medium">تحميل ملف Revit (.IFC)</span>
                 </button>
-                {dxfReady && (
+                {ifcReady && (
                   <span className="flex items-center gap-1.5 text-sm text-teal-400">
                     <CheckCircle2 className="w-4 h-4" />
                     جاهز
@@ -319,7 +333,7 @@ export default function Session() {
               </motion.div>
             </div>
 
-            {visibleMessages.length > 1 && (
+            {(visibleMessages.length > 1 || pendingUserMessage || isAnswering) && (
               <div className="space-y-6 mt-12">
                 <div className="flex items-center gap-3 mb-4">
                   <MessageSquare className="w-5 h-5 text-indigo-400" />
@@ -355,29 +369,99 @@ export default function Session() {
                     </motion.div>
                   );
                 })}
-              </div>
-            )}
 
-            {isAnswering && answerStream && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex gap-4"
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-400">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div className="flex-1 pr-12">
-                  <div className="p-5 rounded-2xl glass-panel text-zinc-300">
-                    <MarkdownRenderer content={answerStream} />
-                    <div className="mt-4 flex items-center gap-2 text-zinc-500">
-                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0s" }}></div>
-                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                {pendingUserMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-4 flex-row-reverse"
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-indigo-500/20 text-indigo-400">
+                      <User className="w-5 h-5" />
                     </div>
-                  </div>
-                </div>
-              </motion.div>
+                    <div className="flex-1 pl-12">
+                      <div className="p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-zinc-200">
+                        <p>{pendingUserMessage.text}</p>
+                        {pendingUserMessage.images && pendingUserMessage.images.length > 0 && (
+                          <div className="flex gap-2 mt-3">
+                            {pendingUserMessage.images.map((img, i) => (
+                              <img key={i} src={img} alt="مرفق" className="w-16 h-16 rounded-lg object-cover border border-zinc-700" />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {isAnswering && !answerStream && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-4"
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-400">
+                      <Bot className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 pr-12">
+                      <div className="p-5 rounded-2xl glass-panel text-zinc-400">
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
+                          <span className="text-sm">جارٍ التفكير...</span>
+                          <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0s" }}></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {isAnswering && answerStream && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-4"
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-400">
+                      <Bot className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 pr-12">
+                      <div className="p-5 rounded-2xl glass-panel text-zinc-300">
+                        <MarkdownRenderer content={answerStream} />
+                        <div className="mt-4 flex items-center gap-2 text-zinc-500">
+                          <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0s" }}></div>
+                          <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                          <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {generatedImages.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-4"
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-teal-500/20 text-teal-400">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 pr-12">
+                      <div className="grid grid-cols-1 gap-4">
+                        {generatedImages.map((imgUrl, i) => (
+                          <div key={i} className="rounded-2xl overflow-hidden border border-zinc-700/50 shadow-lg">
+                            <img src={imgUrl} alt="تصور معماري" className="w-full h-auto" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>

@@ -962,7 +962,96 @@ export const useDeleteArchitectureSession = <
 };
 
 /**
- * @summary Download DXF file for an architecture session
+ * @summary Download IFC/BIM file for an architecture session
+ */
+export const getDownloadArchitectureIfcUrl = (id: number) => {
+  return `/api/architecture/sessions/${id}/ifc`;
+};
+
+export const downloadArchitectureIfc = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getDownloadArchitectureIfcUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadArchitectureIfcQueryKey = (id: number) => {
+  return [`/api/architecture/sessions/${id}/ifc`] as const;
+};
+
+export const getDownloadArchitectureIfcQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadArchitectureIfc>>,
+  TError = ErrorType<OpenaiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadArchitectureIfc>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadArchitectureIfcQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadArchitectureIfc>>
+  > = ({ signal }) =>
+    downloadArchitectureIfc(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadArchitectureIfc>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadArchitectureIfcQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadArchitectureIfc>>
+>;
+export type DownloadArchitectureIfcQueryError = ErrorType<OpenaiError>;
+
+/**
+ * @summary Download IFC/BIM file for an architecture session
+ */
+
+export function useDownloadArchitectureIfc<
+  TData = Awaited<ReturnType<typeof downloadArchitectureIfc>>,
+  TError = ErrorType<OpenaiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadArchitectureIfc>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadArchitectureIfcQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Download IFC file (backward-compatible DXF alias)
  */
 export const getDownloadArchitectureDxfUrl = (id: number) => {
   return `/api/architecture/sessions/${id}/dxf`;
@@ -1024,7 +1113,7 @@ export type DownloadArchitectureDxfQueryResult = NonNullable<
 export type DownloadArchitectureDxfQueryError = ErrorType<OpenaiError>;
 
 /**
- * @summary Download DXF file for an architecture session
+ * @summary Download IFC file (backward-compatible DXF alias)
  */
 
 export function useDownloadArchitectureDxf<

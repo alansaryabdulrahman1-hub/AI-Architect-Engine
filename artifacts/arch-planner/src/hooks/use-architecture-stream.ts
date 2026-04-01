@@ -84,6 +84,7 @@ export function useGenerateArchitecturePlan() {
 export function useArchitectureFollowup() {
   const [isAnswering, setIsAnswering] = useState(false);
   const [answerStream, setAnswerStream] = useState("");
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   
   const askFollowup = async (
     sessionId: number,
@@ -93,6 +94,7 @@ export function useArchitectureFollowup() {
   ) => {
     setIsAnswering(true);
     setAnswerStream("");
+    setGeneratedImages([]);
     
     try {
       const bodyPayload: { question: string; images?: string[] } = { question };
@@ -147,6 +149,9 @@ export function useArchitectureFollowup() {
               fullText += parsed.content as string;
               setAnswerStream(fullText);
             }
+            if (parsed.image_url) {
+              setGeneratedImages(prev => [...prev, parsed.image_url as string]);
+            }
           }
         }
       }
@@ -161,5 +166,5 @@ export function useArchitectureFollowup() {
     }
   };
 
-  return { askFollowup, isAnswering, answerStream };
+  return { askFollowup, isAnswering, answerStream, generatedImages };
 }

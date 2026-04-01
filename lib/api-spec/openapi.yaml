@@ -215,11 +215,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
-  /architecture/sessions/{id}/dxf:
+  /architecture/sessions/{id}/ifc:
     get:
-      operationId: downloadArchitectureDxf
+      operationId: downloadArchitectureIfc
       tags: [architecture]
-      summary: Download DXF file for an architecture session
+      summary: Download IFC/BIM file for an architecture session
       parameters:
         - name: id
           in: path
@@ -228,9 +228,34 @@ paths:
             type: integer
       responses:
         "200":
-          description: DXF file download
+          description: IFC file download
           content:
-            application/dxf:
+            application/x-step:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+  /architecture/sessions/{id}/dxf:
+    get:
+      operationId: downloadArchitectureDxf
+      tags: [architecture]
+      summary: Download IFC file (backward-compatible DXF alias)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: IFC file download (served as IFC despite path)
+          content:
+            application/x-step:
               schema:
                 type: string
                 format: binary

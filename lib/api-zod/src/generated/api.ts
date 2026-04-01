@@ -363,7 +363,14 @@ export const DeleteArchitectureSessionParams = zod.object({
 });
 
 /**
- * @summary Download DXF file for an architecture session
+ * @summary Download IFC/BIM file for an architecture session
+ */
+export const DownloadArchitectureIfcParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Download IFC file (backward-compatible DXF alias)
  */
 export const DownloadArchitectureDxfParams = zod.object({
   id: zod.coerce.number(),
