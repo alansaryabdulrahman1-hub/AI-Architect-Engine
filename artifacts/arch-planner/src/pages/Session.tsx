@@ -248,7 +248,7 @@ export default function Session() {
               <div className="mt-8 pt-6 border-t border-zinc-800/50 flex flex-wrap items-center gap-4">
                 <button
                   onClick={handleDownloadIfc}
-                  disabled={!ifcReady && !planReady}
+                  disabled={!ifcReady}
                   className="flex items-center gap-3 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {ifcReady ? (
