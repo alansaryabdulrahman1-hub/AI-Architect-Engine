@@ -1,0 +1,31 @@
+Objective: Completely deprecate AutoCAD/AutoLISP logic and pivot to a dedicated Revit-aligned IFC workflow with 100% visual synchronization.
+
+1. Complete Deprecation of AutoCAD & AutoLISP:
+
+Action: Remove all scripts, functions, or logic related to .lsp (AutoLISP) or .dxf (AutoCAD) generation.
+
+Focus: Reallocate all processing power and library dependencies to support IFC 4 (Industry Foundation Classes). The system must now treat the project exclusively as a BIM Model, not a 2D drawing.
+
+2. High-Fidelity IFC Generation (Revit Native Alignment):
+
+Strict Mapping: Ensure the generateIfc function maps coordinates with absolute precision to Revit-native categories: IfcWallStandardCase, IfcSlab, IfcDoor, and IfcWindow.
+
+Data Consistency: The IFC file MUST be a 1:1 digital twin of the AI-calculated floor plan. Every dimension in the metadata must match the spatial coordinates provided in the session.
+
+Hierarchy: Structure the IFC file to be recognized by Revit's Project Browser (Site > Building > Building Storey > Elements).
+
+3. Visual Synchronization (The "Mirror" Rule):
+
+Task: When the user requests an image render in the chat, the AI must use the exact same coordinate data used for the IFC file to generate the prompt for the Image Generator (DALL-E/Midjourney).
+
+Verification: The generated image MUST reflect the actual layout of the IFC plan (e.g., if the IFC has a northern entrance, the 3D render must show the entrance on the north). This ensures the user "sees" exactly what they will "download."
+
+4. Enhanced Chat Feedback & Guardrails:
+
+Real-Time Display: Maintain the instant message display for users, followed by the "Thinking... / جارٍ التفكير..." indicator.
+
+Off-Topic Firewall: Strictly enforce the architectural-only response rule. If asked about AutoLISP or non-architectural topics, respond: "I have transitioned to a pure Revit/BIM workflow to ensure higher precision. I no longer support AutoCAD/LISP-related tasks."
+
+5. Technical Execution (Backend):
+
+Use web-ifc or IfcOpenShell to ensure the generated file passes IFC validation schemes before the download link is enabled.
