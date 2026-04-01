@@ -82,13 +82,13 @@ export default function Session() {
     setPendingUserMessage({ text: currentQ, images: currentImages.length > 0 ? currentImages : undefined });
     
     try {
-      await askFollowup(sessionId, currentQ, currentImages.length > 0 ? currentImages : undefined, () => {
+      await askFollowup(sessionId, currentQ, currentImages.length > 0 ? currentImages : undefined, async () => {
+        await refetchMessages();
         setPendingUserMessage(null);
-        refetchMessages();
       });
     } catch {
+      await refetchMessages();
       setPendingUserMessage(null);
-      refetchMessages();
     }
   };
 

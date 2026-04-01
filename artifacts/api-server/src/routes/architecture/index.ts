@@ -932,14 +932,19 @@ function generateIfc(rows: CoordinateRow[], buildingName?: string): string {
     if (ifcType === "IfcDoor") height = DEFAULT_DOOR_HEIGHT;
     if (ifcType === "IfcWindow") height = DEFAULT_WINDOW_HEIGHT;
 
+    const profileOrigin2d = nextIfcId();
+    lines.push(`#${profileOrigin2d}=IFCCARTESIANPOINT((${ifcFloat(segLen / 2)},${ifcFloat(0)}));`);
+    const profilePlacement = nextIfcId();
+    lines.push(`#${profilePlacement}=IFCAXIS2PLACEMENT2D(#${profileOrigin2d},$);`);
+
     const rectProfile = nextIfcId();
-    lines.push(`#${rectProfile}=IFCRECTANGLEPROFILEDEF(.AREA.,$,$,${ifcFloat(width)},${ifcFloat(height)});`);
+    lines.push(`#${rectProfile}=IFCRECTANGLEPROFILEDEF(.AREA.,$,#${profilePlacement},${ifcFloat(segLen)},${ifcFloat(width)});`);
 
     const extrudDir = nextIfcId();
     lines.push(`#${extrudDir}=IFCDIRECTION((${ifcFloat(0)},${ifcFloat(0)},${ifcFloat(1)}));`);
 
     const solidId = nextIfcId();
-    lines.push(`#${solidId}=IFCEXTRUDEDAREASOLID(#${rectProfile},#${worldPlacement},#${extrudDir},${ifcFloat(segLen)});`);
+    lines.push(`#${solidId}=IFCEXTRUDEDAREASOLID(#${rectProfile},#${worldPlacement},#${extrudDir},${ifcFloat(height)});`);
 
     const shapeRep = nextIfcId();
     lines.push(`#${shapeRep}=IFCSHAPEREPRESENTATION(#${geomContext},'Body','SweptSolid',(#${solidId}));`);
@@ -950,10 +955,10 @@ function generateIfc(rows: CoordinateRow[], buildingName?: string): string {
     const elemId = nextIfcId();
     switch (ifcType) {
       case "IfcDoor":
-        lines.push(`#${elemId}=IFCDOOR('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,${ifcFloat(DEFAULT_DOOR_HEIGHT)},${ifcFloat(width)});`);
+        lines.push(`#${elemId}=IFCDOOR('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,${ifcFloat(DEFAULT_DOOR_HEIGHT)},${ifcFloat(width)},.DOOR.,.SINGLE_SWING_LEFT.);`);
         break;
       case "IfcWindow":
-        lines.push(`#${elemId}=IFCWINDOW('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,${ifcFloat(DEFAULT_WINDOW_HEIGHT)},${ifcFloat(width)});`);
+        lines.push(`#${elemId}=IFCWINDOW('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,${ifcFloat(DEFAULT_WINDOW_HEIGHT)},${ifcFloat(width)},.WINDOW.,.SINGLE_PANEL.);`);
         break;
       case "IfcStair":
         lines.push(`#${elemId}=IFCSTAIR('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,.STRAIGHT_RUN_STAIR.);`);
@@ -962,7 +967,7 @@ function generateIfc(rows: CoordinateRow[], buildingName?: string): string {
         lines.push(`#${elemId}=IFCSLAB('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,.FLOOR.);`);
         break;
       default:
-        lines.push(`#${elemId}=IFCWALL('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$);`);
+        lines.push(`#${elemId}=IFCWALL('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,.NOTDEFINED.);`);
         break;
     }
     elementIds.push(elemId);
