@@ -1,0 +1,48 @@
+بناءً على المشاكل التقنية الحرجة التي واجهتها، قمت بصياغة برومبت "طوارئ" (Emergency Fix Prompt) موجه لـ Replit Agent. هذا البرومبت مصمم لإصلاح واجهة المستخدم فوراً (إعادة مربع الحوار)، واستعادة البيانات المفقودة (ملف IFC والصور)، والتأكد من أنها "تعمل" وليست مجرد شكل.
+
+إليك البرومبت باللغة الإنجليزية لضمان الدقة التنفيذية:
+
+Replit Agent EMERGENCY FIX: Restore UI & Data Functionality
+Objective: Immediately restore the deleted Chat Input Box, and fix the broken implementation of IFC file generation and Image display. Functionality must be verified, not just visual presence.
+
+1. Critical UI Restoration (Chat Input Box):
+
+Action: Identify the code block where the main Chat Input component (Textarea and Send button) was removed from the session page.
+
+Fix: Re-insert the component immediately at the bottom of the chat window. Ensure its state management (e.g., useState for input text) and onClick handlers are fully re-connected to the message dispatch logic. The user must be able to type and send messages now.
+
+2. IFC File Generation & Download Fix (Back to Functional):
+
+Problem: The system is not sending/generating the IFC file, and the download button is likely disabled or broken.
+
+Fix:
+
+Verify that the generateIfc function is correctly receiving the coordinate data.
+
+Ensure the backend endpoint /api/architecture/sessions/:id/ifc is active and successfully serves a valid .ifc file (IFC4 standard).
+
+Re-connect the frontend "Download IFC" button to this endpoint. The button must be enabled only when ifcReady is true. Testing is required to ensure a file actually downloads upon clicking.
+
+3. Image Restoration & "Mirror Rule" Verification:
+
+Problem: Project images have disappeared from the chat history and initial session view.
+
+Fix:
+
+Restore History: Check the Database migration; ensure the image URLs (initial and follow-up) were not lost during the dxf_content rename. Re-render all historical image bubbles in the ChatHistory.
+
+Sync Verification: For any new generation, enforce the "Mirror Rule" established in the previous plan: the AI must derive the image prompt directly from the same parsed coordinate data used for the IFC file. This ensures visual synchronization. Verify that the image renders and displays inline in the chat.
+
+4. Real-time UX Check (The "Thinking" State):
+
+Action: Confirm that when a message is sent (once the input box is restored), the user's bubble appears instantly, followed by the "Thinking... / جارٍ التفكير..." indicator, and then the streaming response.
+
+5. Verification Requirement:
+
+Do not just mark these tasks as "Done." You must perform a backend and frontend check to ensure:
+
+The Input box accepts text.
+
+Clicking "Download" retrieves a real IFC file.
+
+Images display and match the requested design.

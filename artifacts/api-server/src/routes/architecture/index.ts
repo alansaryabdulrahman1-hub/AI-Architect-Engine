@@ -358,7 +358,7 @@ function buildImageContentParts(imageDataUrls: string[]): ContentPart[] {
 
 function sessionWithIfcFlag(session: typeof architectureSessions.$inferSelect) {
   const { ifcContent, ...rest } = session;
-  return { ...rest, ifcReady: ifcContent != null };
+  return { ...rest, ifcReady: ifcContent != null && validateIfcStructure(ifcContent) };
 }
 
 router.get("/sessions", async (req, res) => {
@@ -1254,7 +1254,7 @@ async function handleIfcDownload(req: import("express").Request, res: import("ex
 
     let ifcContent = session.ifcContent;
 
-    if (!ifcContent) {
+    if (!ifcContent || !validateIfcStructure(ifcContent)) {
       const rows = parseCoordinatesTable(session.generatedPlan);
       if (rows.length === 0) {
         const w = ((session.sideNorth || 0) + (session.sideSouth || 0)) / 2 || 20;
