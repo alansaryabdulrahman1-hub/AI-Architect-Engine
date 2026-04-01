@@ -732,6 +732,7 @@ function getLayerForElement(element: string): string {
 }
 
 function getIfcTypeForElement(element: string): string {
+  if (/بلاطة|سقف|أرضية|slab|floor/i.test(element)) return "IfcSlab";
   const layer = getLayerForElement(element);
   switch (layer) {
     case "DOORS": return "IfcDoor";
@@ -957,11 +958,62 @@ function generateIfc(rows: CoordinateRow[], buildingName?: string): string {
       case "IfcStair":
         lines.push(`#${elemId}=IFCSTAIR('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,.STRAIGHT_RUN_STAIR.);`);
         break;
+      case "IfcSlab":
+        lines.push(`#${elemId}=IFCSLAB('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$,.FLOOR.);`);
+        break;
       default:
         lines.push(`#${elemId}=IFCWALL('${generateIfcGuid()}',#${ownerHistId},'${label}',$,$,#${localPlacement},#${prodShape},$);`);
         break;
     }
     elementIds.push(elemId);
+  }
+
+  const allX = rows.flatMap(r => [r.startX, r.endX]);
+  const allY = rows.flatMap(r => [r.startY, r.endY]);
+  if (allX.length > 0 && allY.length > 0) {
+    const minX = Math.min(...allX);
+    const minY = Math.min(...allY);
+    const maxX = Math.max(...allX);
+    const maxY = Math.max(...allY);
+    const slabW = maxX - minX;
+    const slabD = maxY - minY;
+    const SLAB_THICKNESS = 0.25;
+
+    if (slabW > 0.01 && slabD > 0.01) {
+      const slabPt1 = nextIfcId();
+      lines.push(`#${slabPt1}=IFCCARTESIANPOINT((${ifcFloat(minX)},${ifcFloat(minY)},${ifcFloat(0)}));`);
+      const slabPt2 = nextIfcId();
+      lines.push(`#${slabPt2}=IFCCARTESIANPOINT((${ifcFloat(maxX)},${ifcFloat(minY)},${ifcFloat(0)}));`);
+      const slabPt3 = nextIfcId();
+      lines.push(`#${slabPt3}=IFCCARTESIANPOINT((${ifcFloat(maxX)},${ifcFloat(maxY)},${ifcFloat(0)}));`);
+      const slabPt4 = nextIfcId();
+      lines.push(`#${slabPt4}=IFCCARTESIANPOINT((${ifcFloat(minX)},${ifcFloat(maxY)},${ifcFloat(0)}));`);
+
+      const slabPoly = nextIfcId();
+      lines.push(`#${slabPoly}=IFCPOLYLINE((#${slabPt1},#${slabPt2},#${slabPt3},#${slabPt4},#${slabPt1}));`);
+
+      const slabProfile = nextIfcId();
+      lines.push(`#${slabProfile}=IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#${slabPoly});`);
+
+      const slabExtDir = nextIfcId();
+      lines.push(`#${slabExtDir}=IFCDIRECTION((${ifcFloat(0)},${ifcFloat(0)},${ifcFloat(1)}));`);
+
+      const slabSolid = nextIfcId();
+      lines.push(`#${slabSolid}=IFCEXTRUDEDAREASOLID(#${slabProfile},#${worldPlacement},#${slabExtDir},${ifcFloat(SLAB_THICKNESS)});`);
+
+      const slabShapeRep = nextIfcId();
+      lines.push(`#${slabShapeRep}=IFCSHAPEREPRESENTATION(#${geomContext},'Body','SweptSolid',(#${slabSolid}));`);
+
+      const slabProdShape = nextIfcId();
+      lines.push(`#${slabProdShape}=IFCPRODUCTDEFINITIONSHAPE($,$,(#${slabShapeRep}));`);
+
+      const slabPlacement = nextIfcId();
+      lines.push(`#${slabPlacement}=IFCLOCALPLACEMENT(#${storyPlacement},#${worldPlacement});`);
+
+      const slabId = nextIfcId();
+      lines.push(`#${slabId}=IFCSLAB('${generateIfcGuid()}',#${ownerHistId},'Floor Slab',$,$,#${slabPlacement},#${slabProdShape},$,.FLOOR.);`);
+      elementIds.push(slabId);
+    }
   }
 
   if (elementIds.length > 0) {
