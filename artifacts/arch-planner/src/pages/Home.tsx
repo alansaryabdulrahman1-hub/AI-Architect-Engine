@@ -172,12 +172,12 @@ function CollapsibleSection({ title, icon: Icon, iconColor, children, defaultOpe
 }
 
 const GENERATION_PHASES = [
-  { label: "تحليل هندسة الأرض...", duration: 3000 },
-  { label: "حساب التوزيع المساحي...", duration: 6000 },
-  { label: "تصميم المخطط المعماري...", duration: 10000 },
-  { label: "إعداد الجداول والإحداثيات...", duration: 18000 },
-  { label: "بناء نموذج BIM/IFC...", duration: 25000 },
-  { label: "مراجعة القواعد الهندسية...", duration: 35000 },
+  { label: "تحليل الموقع والقيود...", duration: 3000 },
+  { label: "إعداد ملف التصميم (Design Brief)...", duration: 6000 },
+  { label: "تصميم مخططات التدوير والحركة...", duration: 10000 },
+  { label: "توزيع الفراغات والإحداثيات...", duration: 18000 },
+  { label: "بوابة التحقق الهندسي...", duration: 25000 },
+  { label: "بناء نموذج BIM/IFC...", duration: 35000 },
 ];
 
 function GeneratingView({
@@ -459,7 +459,7 @@ export default function Home() {
                 ماذا تريد أن تبني <span className="text-gradient">اليوم؟</span>
               </h2>
               <p className="text-lg text-zinc-400 max-w-xl mx-auto">
-                أدخل تفاصيل مشروعك وسيقوم الذكاء الاصطناعي بتوليد مخطط معماري تفصيلي مع أبعاد دقيقة وملف BIM/IFC جاهز لبرنامج Revit.
+                كبير المعماريين الذكي يحلل موقعك، يستشيرك في المتطلبات، ثم يصمم مخططاً معمارياً دقيقاً مع ملف BIM/IFC جاهز لبرنامج Revit.
               </p>
             </div>
 

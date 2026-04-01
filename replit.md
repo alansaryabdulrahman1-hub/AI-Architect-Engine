@@ -96,7 +96,9 @@ React+Vite frontend with full RTL Arabic support. Dark professional theme inspir
 - **On-demand image generation in chat**: Users can request renders/visualizations in followup chat. AI uses `[GENERATE_IMAGE]` marker, backend detects it, calls DALL-E, sends image via SSE
 - **Real-time chat UI**: Instant pending message display, "جارٍ التفكير..." thinking indicator with animated dots, auto-scroll on new messages
 - **Off-topic firewall**: System prompt refuses non-architectural questions in both Arabic and English, and explicitly refuses AutoCAD/LISP queries with a transition message directing users to Revit/BIM
-- **Generation phases UI**: During plan generation, shows animated phase indicators (land geometry analysis → spatial layout → architectural design → coordinates → BIM/IFC model → engineering rules review) based on elapsed time
+- **Generation phases UI**: During plan generation, shows animated phase indicators (site analysis → design brief → circulation planning → spatial layout → validation gate → BIM/IFC model) based on elapsed time
+- **Senior Architect AI persona**: The AI acts as a "كبير المعماريين" (Senior Architect) with a "Consultation First" protocol — analyzes site constraints, asks about missing functional requirements (bathrooms, room priorities, special needs) before generating a plan, then validates the design through an engineering gate (area math, structural grid, privacy, circulation) before producing final coordinates
+- **Engineering rules**: 9 mandatory rules enforced in every plan — no room overlap, circulation corridors (min 1.2m), guest/family path separation, courtyard integration, solar orientation, structural grid from stairs, irregular angle handling, neighbor privacy, BIM-ready entities
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 
