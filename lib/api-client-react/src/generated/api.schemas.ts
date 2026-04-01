@@ -83,8 +83,8 @@ export interface ArchitectureSession {
   /** Budget range (low, medium, high, premium) */
   budgetRange?: string;
   generatedPlan: string;
-  /** Whether the DXF file has been pre-generated and is ready for download */
-  dxfReady?: boolean;
+  /** Whether the IFC/BIM file has been generated and is ready for download */
+  ifcReady?: boolean;
   floorPlanImageUrl?: string | null;
   exteriorImageUrl?: string | null;
   conversationId: number;

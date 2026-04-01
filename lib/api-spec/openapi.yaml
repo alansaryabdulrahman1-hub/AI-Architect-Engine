@@ -240,31 +240,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
-  /architecture/sessions/{id}/dxf:
-    get:
-      operationId: downloadArchitectureDxf
-      tags: [architecture]
-      summary: Download IFC file (backward-compatible DXF alias)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: IFC file download (served as IFC despite path)
-          content:
-            application/x-step:
-              schema:
-                type: string
-                format: binary
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/OpenaiError"
   /architecture/sessions/{id}/followup:
     post:
       operationId: sendArchitectureFollowup
@@ -445,9 +420,9 @@ components:
           description: Budget range (low, medium, high, premium)
         generatedPlan:
           type: string
-        dxfReady:
+        ifcReady:
           type: boolean
-          description: Whether the DXF file has been pre-generated and is ready for download
+          description: Whether the IFC/BIM file has been generated and is ready for download
         floorPlanImageUrl:
           type: string
           nullable: true

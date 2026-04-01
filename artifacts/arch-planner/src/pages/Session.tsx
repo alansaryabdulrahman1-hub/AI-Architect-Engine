@@ -13,6 +13,22 @@ interface PendingMessage {
   images?: string[];
 }
 
+function validateIfcStructure(ifcText: string): boolean {
+  if (!ifcText.startsWith("ISO-10303-21;")) return false;
+  if (!ifcText.includes("HEADER;")) return false;
+  if (!ifcText.includes("DATA;")) return false;
+  if (!ifcText.includes("ENDSEC;")) return false;
+  if (!ifcText.includes("END-ISO-10303-21;")) return false;
+  if (!ifcText.includes("IFCPROJECT(")) return false;
+  if (!ifcText.includes("IFCSITE(")) return false;
+  if (!ifcText.includes("IFCBUILDING(")) return false;
+  if (!ifcText.includes("IFCBUILDINGSTOREY(")) return false;
+  if (!ifcText.includes("IFCRELAGGREGATES(")) return false;
+  const entityRefs = ifcText.match(/#(\d+)\s*=/g);
+  if (!entityRefs || entityRefs.length < 10) return false;
+  return true;
+}
+
 export default function Session() {
   const { id } = useParams<{ id: string }>();
   const sessionId = parseInt(id);
@@ -30,13 +46,14 @@ export default function Session() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [assetsPollActive, setAssetsPollActive] = useState(false);
   const [assetsPollTimedOut, setAssetsPollTimedOut] = useState(false);
+  const [ifcValidated, setIfcValidated] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [dbMessages, answerStream, pendingUserMessage, generatedImages]);
 
   useEffect(() => {
-    if (session && (!session.floorPlanImageUrl || !session.exteriorImageUrl || !session.dxfReady)) {
+    if (session && (!session.floorPlanImageUrl || !session.exteriorImageUrl || !session.ifcReady)) {
       setAssetsPollActive(true);
       setAssetsPollTimedOut(false);
     }
@@ -48,7 +65,7 @@ export default function Session() {
     const interval = setInterval(async () => {
       const result = await refetchSession();
       const updated = result.data;
-      if (updated?.floorPlanImageUrl && updated?.exteriorImageUrl && updated?.dxfReady) {
+      if (updated?.floorPlanImageUrl && updated?.exteriorImageUrl && updated?.ifcReady) {
         setAssetsPollActive(false);
       }
     }, 5000);
@@ -64,8 +81,23 @@ export default function Session() {
     };
   }, [assetsPollActive, session?.id]);
 
+  useEffect(() => {
+    if (!session?.ifcReady) {
+      setIfcValidated(false);
+      return;
+    }
+    fetch(`/api/architecture/sessions/${sessionId}/ifc`)
+      .then(res => res.ok ? res.text() : Promise.reject("fetch failed"))
+      .then(text => {
+        setIfcValidated(validateIfcStructure(text));
+      })
+      .catch(() => {
+        setIfcValidated(false);
+      });
+  }, [session?.ifcReady, sessionId]);
+
   const planReady = !!session?.generatedPlan;
-  const ifcReady = !!session?.dxfReady;
+  const ifcReady = !!session?.ifcReady && ifcValidated;
   const floorPlanReady = !!session?.floorPlanImageUrl;
   const exteriorReady = !!session?.exteriorImageUrl;
   const allAssetsReady = planReady && ifcReady && floorPlanReady && exteriorReady;

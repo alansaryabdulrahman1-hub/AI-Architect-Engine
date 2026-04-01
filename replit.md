@@ -60,7 +60,6 @@ All routes under `/api`:
 - `GET /api/architecture/sessions/:id` — Get session
 - `DELETE /api/architecture/sessions/:id` — Delete session
 - `GET /api/architecture/sessions/:id/ifc` — Download IFC/BIM file for Revit
-- `GET /api/architecture/sessions/:id/dxf` — Backward-compatible alias (serves IFC)
 - `POST /api/architecture/sessions/:id/followup` — Follow-up question (SSE stream)
 - `GET /api/openai/conversations` — List conversations
 - `POST /api/openai/conversations` — Create conversation
@@ -93,12 +92,11 @@ React+Vite frontend with full RTL Arabic support. Dark professional theme inspir
 - Session view with layout: User Summary → Architectural Package Status → AI Plan → IFC Download → Image Previews → Discussion → Sticky Chat Input
 - **Architectural Package status indicator**: Shows real-time status of all 4 outputs (Plan, IFC, 2D Image, 3D Exterior) with checkmarks as each completes; disappears when all assets are ready
 - AI-generated image cards: 2D floor plan + 3D exterior view (DALL-E 3), with coordinate-aware prompts and loading/error states
-- IFC/BIM download: Auto-generated IFC-SPF (STEP Physical File) after plan completion (stored in DB), served instantly. Maps coordinate rows to IfcWall, IfcDoor, IfcWindow, IfcSlab entities. Compatible with Revit, ArchiCAD, and other BIM software. Legacy DXF endpoint still works as alias.
+- IFC/BIM download: Auto-generated IFC4-SPF (STEP Physical File) after plan completion (stored in DB), served instantly. Maps coordinate rows to IfcWallStandardCase, IfcDoor, IfcWindow, IfcSlab entities. Compatible with Revit, ArchiCAD, and other BIM software. IFC files are validated for structural correctness before storage.
 - **On-demand image generation in chat**: Users can request renders/visualizations in followup chat. AI uses `[GENERATE_IMAGE]` marker, backend detects it, calls DALL-E, sends image via SSE
 - **Real-time chat UI**: Instant pending message display, "جارٍ التفكير..." thinking indicator with animated dots, auto-scroll on new messages
-- **Off-topic firewall**: System prompt refuses non-architectural questions in both Arabic and English
-- **Generation phases UI**: During plan generation, shows animated phase indicators (land geometry analysis → spatial layout → architectural design → coordinates → AutoCAD script → engineering rules review) based on elapsed time
-- Code block copy buttons for AutoLISP scripts
+- **Off-topic firewall**: System prompt refuses non-architectural questions in both Arabic and English, and explicitly refuses AutoCAD/LISP queries with a transition message directing users to Revit/BIM
+- **Generation phases UI**: During plan generation, shows animated phase indicators (land geometry analysis → spatial layout → architectural design → coordinates → BIM/IFC model → engineering rules review) based on elapsed time
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 
@@ -110,7 +108,7 @@ Express 5 API server.
 
 ### `lib/db` (`@workspace/db`)
 
-Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`. Architecture sessions include nullable columns for: pre-generated DXF content (dxf_content), AI-generated images (floor_plan_image_url, exterior_image_url), site context (deed_number, plot_number, neighbor_east/west/south, soil_type, budget_range, is_irregular_land), and optional design preferences (ac_type, stair_location, bedroom_count, kitchen_type).
+Database layer using Drizzle ORM with PostgreSQL. Tables: `conversations`, `messages`, `architecture_sessions`. Architecture sessions include nullable columns for: pre-generated IFC content (ifc_content), AI-generated images (floor_plan_image_url, exterior_image_url), site context (deed_number, plot_number, neighbor_east/west/south, soil_type, budget_range, is_irregular_land), and optional design preferences (ac_type, stair_location, bedroom_count, kitchen_type).
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 

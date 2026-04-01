@@ -156,11 +156,11 @@ export const ListArchitectureSessionsResponseItem = zod.object({
     .optional()
     .describe("Budget range (low, medium, high, premium)"),
   generatedPlan: zod.string(),
-  dxfReady: zod
+  ifcReady: zod
     .boolean()
     .optional()
     .describe(
-      "Whether the DXF file has been pre-generated and is ready for download",
+      "Whether the IFC\/BIM file has been generated and is ready for download",
     ),
   floorPlanImageUrl: zod.string().nullish(),
   exteriorImageUrl: zod.string().nullish(),
@@ -343,11 +343,11 @@ export const GetArchitectureSessionResponse = zod.object({
     .optional()
     .describe("Budget range (low, medium, high, premium)"),
   generatedPlan: zod.string(),
-  dxfReady: zod
+  ifcReady: zod
     .boolean()
     .optional()
     .describe(
-      "Whether the DXF file has been pre-generated and is ready for download",
+      "Whether the IFC\/BIM file has been generated and is ready for download",
     ),
   floorPlanImageUrl: zod.string().nullish(),
   exteriorImageUrl: zod.string().nullish(),
@@ -366,13 +366,6 @@ export const DeleteArchitectureSessionParams = zod.object({
  * @summary Download IFC/BIM file for an architecture session
  */
 export const DownloadArchitectureIfcParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-/**
- * @summary Download IFC file (backward-compatible DXF alias)
- */
-export const DownloadArchitectureDxfParams = zod.object({
   id: zod.coerce.number(),
 });
 

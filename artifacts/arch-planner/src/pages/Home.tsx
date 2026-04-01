@@ -176,7 +176,7 @@ const GENERATION_PHASES = [
   { label: "حساب التوزيع المساحي...", duration: 6000 },
   { label: "تصميم المخطط المعماري...", duration: 10000 },
   { label: "إعداد الجداول والإحداثيات...", duration: 18000 },
-  { label: "كتابة سكربت AutoCAD...", duration: 25000 },
+  { label: "بناء نموذج BIM/IFC...", duration: 25000 },
   { label: "مراجعة القواعد الهندسية...", duration: 35000 },
 ];
 
@@ -459,7 +459,7 @@ export default function Home() {
                 ماذا تريد أن تبني <span className="text-gradient">اليوم؟</span>
               </h2>
               <p className="text-lg text-zinc-400 max-w-xl mx-auto">
-                أدخل تفاصيل مشروعك وسيقوم الذكاء الاصطناعي بتوليد مخطط معماري تفصيلي مع أبعاد دقيقة وسكربت AutoLISP جاهز.
+                أدخل تفاصيل مشروعك وسيقوم الذكاء الاصطناعي بتوليد مخطط معماري تفصيلي مع أبعاد دقيقة وملف BIM/IFC جاهز لبرنامج Revit.
               </p>
             </div>
 
