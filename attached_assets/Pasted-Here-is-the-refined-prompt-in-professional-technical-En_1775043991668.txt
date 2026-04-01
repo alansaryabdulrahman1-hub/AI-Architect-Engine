@@ -1,0 +1,32 @@
+Here is the refined prompt in professional technical English, optimized for Replit Agent to understand the architectural context and the specific coding requirements for the UI and file export.
+
+Replit Agent Development Prompt
+Objective: Upgrade the Architectural AI Engineer application with advanced file export capabilities, refined conversational logic, and a real-time responsive UI.
+
+1. Architectural Export Upgrade (AutoCAD to Revit)
+
+Migration: Replace the current DXF generation engine with a Revit-compatible export system.
+
+Format: Implement the export of IFC (Industry Foundation Classes) or .rvt files. The generated files must treat elements as architectural objects (Walls, Doors, Windows) rather than simple 2D lines to ensure full BIM compatibility.
+
+UI Update: Update the "Download" button to trigger the new Revit-compatible file generation with automated project naming.
+
+2. ChatBot Logic & Constraint Refinement (System Instructions)
+
+Technical Support: Program the AI to assist with all platform-related queries, troubleshooting (e.g., "The file isn't opening"), and interpreting generated floor plans.
+
+Media Generation: Enable a feature where the AI can generate visual renders (conceptual images) of the floor plans upon direct user request within the chat.
+
+Strict Contextual Firewall: * The AI must strictly refuse to engage in "Off-Topic" or "Out-of-Character" discussions (e.g., personal opinions, philosophy, or general non-architectural topics).
+
+Refusal Protocol: If an off-topic question is asked, the AI should politely respond: "I am specialized in architectural tasks and technical support for this platform. How can I assist with your design or project today?"
+
+3. Real-time Conversational UI (Asynchronous Messaging)
+
+Instant Feedback: Modify the frontend chat logic so the User's message appears instantly in the chat history upon hitting "Send."
+
+Loading State: Implement a "Thinking..." or "Processing..." indicator immediately below the user's message while the AI generates a response.
+
+Sequential Rendering: Ensure the AI response is appended directly below the specific user prompt in chronological order, moving away from the current "batch update" system where messages only appear after the full process is complete.
+
+State Management: Use efficient state updates (e.g., React useState or equivalent) to ensure the chat window scrolls to the latest message automatically.
